@@ -10,3 +10,5 @@ frontend/dist/
 .env
 data/runtime/artifacts/*
 !data/runtime/artifacts/.gitkeep
+*.pdf
+*.docx
