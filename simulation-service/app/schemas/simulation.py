@@ -9,9 +9,11 @@ from simulation_core.defaults import (
     DEFAULT_ARRIVAL_RATE_MULTIPLIER,
     DEFAULT_EXAM_PROBABILITY,
     DEFAULT_NUM_CT,
-    DEFAULT_NUM_DOCTORS,
     DEFAULT_NUM_DOCTORS_NIGHT,
+    DEFAULT_NUM_GENERAL_DOCTORS,
     DEFAULT_NUM_LAB,
+    DEFAULT_NUM_NURSES,
+    DEFAULT_NUM_SENIOR_DOCTORS,
     DEFAULT_NUM_ULTRASOUND,
     DEFAULT_NUM_XRAY,
     DEFAULT_RANDOM_SEED,
@@ -22,8 +24,10 @@ from simulation_core.defaults import (
 
 class SimulationParamsRequest(BaseModel):
     scheduling_strategy: Literal["IFP", "ALT", "SBP"] = Field(default=DEFAULT_SCHEDULING_STRATEGY)
-    num_doctors: int = Field(default=DEFAULT_NUM_DOCTORS, ge=1, le=32)
+    num_general_doctors: int = Field(default=DEFAULT_NUM_GENERAL_DOCTORS, ge=1, le=32)
+    num_senior_doctors: int = Field(default=DEFAULT_NUM_SENIOR_DOCTORS, ge=0, le=32)
     num_doctors_night: int = Field(default=DEFAULT_NUM_DOCTORS_NIGHT, ge=1, le=32)
+    num_nurses: int = Field(default=DEFAULT_NUM_NURSES, ge=0, le=32)
     num_ct: int = Field(default=DEFAULT_NUM_CT, ge=0, le=16)
     num_xray: int = Field(default=DEFAULT_NUM_XRAY, ge=0, le=16)
     num_lab: int = Field(default=DEFAULT_NUM_LAB, ge=0, le=32)

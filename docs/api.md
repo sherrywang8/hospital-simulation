@@ -23,6 +23,7 @@ Accepts:
   "scheduling_strategy": "SBP",
   "num_doctors": 5,
   "num_doctors_night": 3,
+  "num_nurses": 3,
   "num_ct": 1,
   "num_xray": 1,
   "num_lab": 1,

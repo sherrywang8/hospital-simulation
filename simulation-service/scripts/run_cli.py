@@ -30,6 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scheduling-strategy", choices=list(VALID_SCHEDULING_STRATEGIES))
     parser.add_argument("--num-doctors", type=int)
     parser.add_argument("--num-doctors-night", type=int)
+    parser.add_argument("--num-nurses", type=int)
     parser.add_argument("--num-ct", type=int)
     parser.add_argument("--num-xray", type=int)
     parser.add_argument("--num-lab", type=int)
@@ -49,6 +50,7 @@ def resolve_parameters(args: argparse.Namespace) -> SimulationParameters:
         "scheduling_strategy": args.scheduling_strategy,
         "num_doctors": args.num_doctors,
         "num_doctors_night": args.num_doctors_night,
+        "num_nurses": args.num_nurses,
         "num_ct": args.num_ct,
         "num_xray": args.num_xray,
         "num_lab": args.num_lab,

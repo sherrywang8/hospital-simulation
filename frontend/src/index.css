@@ -64,3 +64,117 @@ select {
 strong {
   font-weight: 700;
 }
+
+/* Patient Dashboard Layout */
+.patient-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+/* Patient List (Master) */
+.patient-list {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.patient-card {
+  min-width: 200px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.patient-card:hover {
+  border-color: var(--accent);
+}
+.patient-card.active {
+  background: var(--surface-strong);
+  border: 2px solid var(--accent);
+}
+.patient-card h4 { margin: 0 0 8px 0; color: var(--ink-strong); }
+.patient-card p { margin: 0; font-size: 0.9em; color: var(--ink-soft); }
+
+/* Timeline (Detail) */
+.timeline-container {
+  background: var(--surface);
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.timeline-item {
+  display: flex;
+  gap: 16px;
+  padding-bottom: 24px;
+  position: relative;
+}
+.timeline-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 58px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+.timeline-time {
+  min-width: 50px;
+  font-weight: bold;
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+.timeline-content {
+  background: var(--surface-muted);
+  padding: 12px 16px;
+  border-radius: 6px;
+  flex-grow: 1;
+}
+.timeline-content h5 { margin: 0 0 4px 0; font-size: 1em; }
+.resource-tag {
+  display: inline-block;
+  font-size: 0.8em;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-top: 4px;
+}
+
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--surface);
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.filter-input, .filter-select {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.95em;
+  background: white;
+}
+.filter-input {
+  flex-grow: 1;
+  min-width: 200px;
+}
+
+/* Patient Card Adjustments */
+.patient-card-times {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 0.85em;
+  color: var(--ink-strong);
+  display: flex;
+  justify-content: space-between;
+}

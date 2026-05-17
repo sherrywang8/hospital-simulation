@@ -83,6 +83,37 @@
   margin-top: 8px;
   color: var(--ink-soft);
   font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.summary-explainer {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.7);
+}
+
+.summary-explainer-title {
+  margin: 0 0 10px;
+  color: var(--ink-strong);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.summary-explainer-item {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.summary-explainer-item + .summary-explainer-item {
+  margin-top: 8px;
+}
+
+.summary-explainer-item strong {
+  color: var(--ink-strong);
 }
 
 .status-card {
@@ -497,6 +528,125 @@
   color: var(--ink-strong);
 }
 
+.formula-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.formula-card {
+  padding: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(18, 130, 162, 0.08), transparent 36%),
+    rgba(255, 253, 250, 0.96);
+}
+
+.formula-tag {
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.formula-title {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 1.05rem;
+}
+
+.formula-copy {
+  margin: 12px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.formula-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 16px;
+}
+
+.formula-label {
+  color: var(--ink-strong);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.equation-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.86);
+}
+
+.equation-symbol,
+.equation-operator {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: 0.96rem;
+}
+
+.equation-operator {
+  color: var(--ink-soft);
+}
+
+.piecewise-block {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.piecewise-head {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.piecewise-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.piecewise-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: 0.96rem;
+}
+
+.distribution-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formula-note {
+  margin: 14px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.formula-note-inline {
+  margin: 0;
+}
+
 .event-badge {
   display: inline-flex;
   align-items: center;
@@ -542,12 +692,32 @@
   color: var(--ink-soft);
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.pagination-btn {
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 0.92rem;
+}
+
+.pagination-info {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
 @media (max-width: 1100px) {
   .layout-grid,
   .hero-metrics,
   .summary-grid,
   .form-grid,
-  .filter-controls {
+  .filter-controls,
+  .formula-grid {
     grid-template-columns: 1fr;
   }
 
@@ -584,5 +754,10 @@
 
   .log-table {
     min-width: 980px;
+  }
+
+  .formula-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 }

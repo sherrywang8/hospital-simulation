@@ -1,7 +1,9 @@
 .venv/
 __pycache__/
 .pytest_cache/
+.tmp/
 simulation-service/.runtime/
+simulation-service/.test-artifacts/
 frontend/node_modules/
 frontend/dist/
 *.pyc

@@ -51,6 +51,7 @@ def test_create_simulation_returns_result():
                 "scheduling_strategy": "SBP",
                 "num_doctors": 5,
                 "num_doctors_night": 3,
+                "num_nurses": 3,
                 "num_ct": 1,
                 "num_xray": 1,
                 "num_lab": 1,
@@ -67,6 +68,7 @@ def test_create_simulation_returns_result():
         assert response.status_code == 200
         assert payload["status"] == "completed"
         assert payload["summary"]["total_patients"] > 0
+        assert payload["summary"]["resource_utilization"]["nurses"] >= 0
         assert payload["summary"]["resource_utilization"]["ultrasound"] >= 0
         assert payload["event_log"]
     finally:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from threading import Lock
-from typing import Any, Literal
+from typing import Literal
 from uuid import uuid4
 
 from simulation_core.models import SimulationParameters, SimulationResult

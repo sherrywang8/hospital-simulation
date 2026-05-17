@@ -9,9 +9,11 @@ from .defaults import (
     DEFAULT_K_LEVEL3,
     DEFAULT_K_LEVEL4,
     DEFAULT_NUM_CT,
-    DEFAULT_NUM_DOCTORS,
     DEFAULT_NUM_DOCTORS_NIGHT,
+    DEFAULT_NUM_GENERAL_DOCTORS,
     DEFAULT_NUM_LAB,
+    DEFAULT_NUM_NURSES,
+    DEFAULT_NUM_SENIOR_DOCTORS,
     DEFAULT_NUM_ULTRASOUND,
     DEFAULT_NUM_XRAY,
     DEFAULT_RANDOM_SEED,
@@ -40,8 +42,10 @@ def _next_shift_boundary(current_time: float) -> float:
 @dataclass(slots=True)
 class SimulationParameters:
     scheduling_strategy: str = DEFAULT_SCHEDULING_STRATEGY
-    num_doctors: int = DEFAULT_NUM_DOCTORS
+    num_general_doctors: int = DEFAULT_NUM_GENERAL_DOCTORS
+    num_senior_doctors: int = DEFAULT_NUM_SENIOR_DOCTORS
     num_doctors_night: int = DEFAULT_NUM_DOCTORS_NIGHT
+    num_nurses: int = DEFAULT_NUM_NURSES
     num_ct: int = DEFAULT_NUM_CT
     num_xray: int = DEFAULT_NUM_XRAY
     num_lab: int = DEFAULT_NUM_LAB
@@ -57,6 +61,10 @@ class SimulationParameters:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    @property
+    def num_doctors(self) -> int:
+        return self.num_general_doctors + self.num_senior_doctors
 
     @property
     def max_doctors(self) -> int:
@@ -220,7 +228,7 @@ class DoctorConsultationRequest:
     patient: PatientRecord
     stage: Literal["initial", "follow_up"]
     queued_at: float
-    duration: float
+    duration: float | None
     completion_event: Any
 
 

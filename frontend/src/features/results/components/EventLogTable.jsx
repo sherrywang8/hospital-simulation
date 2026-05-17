@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   formatDuration,
   SIMULATION_WEEKDAYS,
@@ -11,6 +11,7 @@ import {
 const EVENT_CATEGORY_OPTIONS = [
   { value: 'all', label: '全部類別' },
   { value: 'arrival', label: '到離院' },
+  { value: 'triage', label: '檢傷流程' },
   { value: 'doctor', label: '初診流程' },
   { value: 'exam', label: '檢查流程' },
   { value: 'return', label: '複診流程' },
@@ -18,6 +19,9 @@ const EVENT_CATEGORY_OPTIONS = [
 
 function getEventCategory(eventType = '') {
   if (eventType.includes('抵達') || eventType.includes('離院')) return 'arrival';
+  if (eventType.includes('檢傷') || eventType.includes('護理評估') || eventType.includes('Triage')) {
+    return 'triage';
+  }
   if (eventType.includes('複診')) return 'return';
   if (
     eventType.includes('檢查')
@@ -34,11 +38,14 @@ function getEventCategory(eventType = '') {
   return 'all';
 }
 
+const PAGE_SIZE = 100;
+
 function EventLogTable({ logs }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWeekday, setSelectedWeekday] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedEventType, setSelectedEventType] = useState('all');
+  const [page, setPage] = useState(0);
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
   const eventTypes = useMemo(
@@ -85,6 +92,13 @@ function EventLogTable({ logs }) {
     });
   }, [activeEventType, deferredSearchTerm, logs, selectedCategory, selectedWeekday]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
+  const pagedLogs = filteredLogs.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(0);
+  }, [filteredLogs]);
+
   return (
     <section className="panel-card">
       <div className="panel-head">
@@ -93,8 +107,9 @@ function EventLogTable({ logs }) {
           <h2 className="panel-title">事件明細</h2>
         </div>
         <p className="panel-copy">
-          目前顯示 {formatInteger(filteredLogs.length)} / {formatInteger(logs?.length || 0)} 筆事件。
-          每一列都同步帶出病人的到院時刻、離院時刻與在院時間，減少自己換算分鐘數的負擔。
+          顯示第 {formatInteger(page * PAGE_SIZE + 1)}–{formatInteger(Math.min((page + 1) * PAGE_SIZE, filteredLogs.length))} 筆，
+          篩選後共 {formatInteger(filteredLogs.length)} / {formatInteger(logs?.length || 0)} 筆。
+          每一列都同步帶出病人的到院時刻、離院時刻與初診等待時間，減少自己換算分鐘數的負擔。
         </p>
       </div>
 
@@ -185,13 +200,12 @@ function EventLogTable({ logs }) {
               <th>到院時刻</th>
               <th>離院時刻</th>
               <th>初診等待</th>
-              <th>在院時間</th>
               <th>資源</th>
               <th>描述</th>
             </tr>
           </thead>
           <tbody>
-            {filteredLogs.map((log, index) => (
+            {pagedLogs.map((log, index) => (
               <tr key={`${log.patient}-${log.timestamp}-${index}`}>
                 <td className="mono-cell time-cell">{formatSimulationClock(log.timestamp)}</td>
                 <td>
@@ -204,7 +218,6 @@ function EventLogTable({ logs }) {
                 <td className="mono-cell time-cell">{`${formatSimulationClock(log.arrival_clock)} 到院`}</td>
                 <td className="mono-cell time-cell">{`${formatSimulationClock(log.departure_clock)} 離院`}</td>
                 <td>{formatDuration(log.waiting_time)}</td>
-                <td>{formatDuration(log.time_in_system)}</td>
                 <td>{log.resource}</td>
                 <td>{log.desc}</td>
               </tr>
@@ -216,6 +229,30 @@ function EventLogTable({ logs }) {
           <div className="empty-state">目前星期或篩選條件下沒有事件。</div>
         ) : null}
       </div>
+
+      {totalPages > 1 ? (
+        <div className="pagination">
+          <button
+            className="ghost-button pagination-btn"
+            type="button"
+            onClick={() => setPage((p) => p - 1)}
+            disabled={page === 0}
+          >
+            ← 上一頁
+          </button>
+          <span className="pagination-info">
+            第 {page + 1} 頁，共 {totalPages} 頁
+          </span>
+          <button
+            className="ghost-button pagination-btn"
+            type="button"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= totalPages - 1}
+          >
+            下一頁 →
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

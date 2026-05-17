@@ -3,6 +3,7 @@ import './App.css';
 import MetricCard from '../components/MetricCard.jsx';
 import StatusBanner from '../components/StatusBanner.jsx';
 import ArrivalRateReferenceTable from '../features/results/components/ArrivalRateReferenceTable.jsx';
+import ModelFormulaReference from '../features/results/components/ModelFormulaReference.jsx';
 import ResultSummary from '../features/results/components/ResultSummary.jsx';
 import EventLogTable from '../features/results/components/EventLogTable.jsx';
 import ScenarioSelector from '../features/simulation/components/ScenarioSelector.jsx';
@@ -12,8 +13,10 @@ import { formatInteger } from '../lib/formatters.js';
 
 const EMPTY_FORM = {
   scheduling_strategy: 'SBP',
-  num_doctors: 5,
+  num_general_doctors: 3,
+  num_senior_doctors: 2,
   num_doctors_night: 3,
+  num_nurses: 3,
   num_ct: 1,
   num_xray: 1,
   num_lab: 1,
@@ -26,6 +29,7 @@ const EMPTY_FORM = {
 
 const VIEW_OVERVIEW = 'overview';
 const VIEW_PAPER_REFERENCE = 'paper-reference';
+const VIEW_MODEL_FORMULA = 'model-formula';
 
 function App() {
   const [scenarios, setScenarios] = useState([]);
@@ -197,6 +201,13 @@ function App() {
         >
           論文參考
         </button>
+        <button
+          type="button"
+          className={`view-tab ${activeView === VIEW_MODEL_FORMULA ? 'is-active' : ''}`}
+          onClick={() => setActiveView(VIEW_MODEL_FORMULA)}
+        >
+          模型公式
+        </button>
       </section>
 
       {activeView === VIEW_OVERVIEW ? (
@@ -230,9 +241,13 @@ function App() {
 
           {result?.event_log ? <EventLogTable logs={result.event_log} /> : null}
         </>
-      ) : (
+      ) : activeView === VIEW_PAPER_REFERENCE ? (
         <section className="reference-page">
           <ArrivalRateReferenceTable />
+        </section>
+      ) : (
+        <section className="reference-page">
+          <ModelFormulaReference />
         </section>
       )}
     </main>

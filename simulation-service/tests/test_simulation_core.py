@@ -8,7 +8,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from simulation_core import SimulationParameters, export_result, run_simulation
-from simulation_core.defaults import EVENT_ARRIVAL
+from simulation_core.defaults import (
+    EVENT_ARRIVAL,
+    EVENT_END_TRIAGE,
+    EVENT_QUEUE_TRIAGE,
+    EVENT_START_INITIAL,
+    EVENT_START_TRIAGE,
+)
 
 
 def test_run_simulation_returns_records():
@@ -60,3 +66,27 @@ def test_patient_cohort_stays_stable_across_strategies():
     ]
 
     assert sbp_cohort == alt_cohort
+
+
+def test_triage_events_happen_before_initial_consult():
+    result = run_simulation(
+        SimulationParameters(simulation_time=180, random_seed=7, num_nurses=1)
+    )
+
+    events_by_patient = {}
+    for item in result.event_log:
+        events_by_patient.setdefault(item["patient_id"], []).append(item)
+
+    assert result.summary.resource_utilization["nurses"] >= 0
+
+    for patient_events in events_by_patient.values():
+        event_types = [item["event_type"] for item in patient_events]
+        if EVENT_START_INITIAL not in event_types:
+            continue
+
+        queue_index = event_types.index(EVENT_QUEUE_TRIAGE)
+        start_triage_index = event_types.index(EVENT_START_TRIAGE)
+        end_triage_index = event_types.index(EVENT_END_TRIAGE)
+        start_initial_index = event_types.index(EVENT_START_INITIAL)
+
+        assert queue_index < start_triage_index < end_triage_index < start_initial_index

@@ -19,6 +19,7 @@ class Hospital:
         self.env = env
         self.parameters = parameters
 
+        self.nurses = _build_optional_resource(env, parameters.num_nurses)
         self.ct_scanner = _build_optional_resource(env, parameters.num_ct)
         self.xray = _build_optional_resource(env, parameters.num_xray)
         self.lab = _build_optional_resource(env, parameters.num_lab)
@@ -32,6 +33,7 @@ class Hospital:
 
         self.busy_time: dict[str, float] = {
             "doctors": 0.0,
+            "nurses": 0.0,
             "ct": 0.0,
             "xray": 0.0,
             "lab": 0.0,

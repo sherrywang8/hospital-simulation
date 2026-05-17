@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-DEFAULT_NUM_DOCTORS = 5
+# Kim (2024) Table 4: Doctor Experience Levels
+DEFAULT_NUM_GENERAL_DOCTORS = 3
+DEFAULT_NUM_SENIOR_DOCTORS = 2
 DEFAULT_NUM_DOCTORS_NIGHT = 3
+DEFAULT_NUM_NURSES = 3
 DEFAULT_NUM_CT = 1
 DEFAULT_NUM_XRAY = 1
 DEFAULT_NUM_LAB = 1
@@ -23,6 +26,10 @@ DEFAULT_LEVEL4_SHARE = 0.75
 DEFAULT_INITIAL_CONSULT_MEAN = 9.0
 DEFAULT_INITIAL_CONSULT_MIN = 5.0
 DEFAULT_INITIAL_CONSULT_MAX = 15.0
+
+DEFAULT_TRIAGE_MIN = 3.0
+DEFAULT_TRIAGE_MODE = 7.0
+DEFAULT_TRIAGE_MAX = 10.0
 
 DEFAULT_FOLLOW_UP_CONSULT_MEAN = 15.0
 DEFAULT_FOLLOW_UP_CONSULT_MIN = 5.0
@@ -233,6 +240,9 @@ PAPER_ARRIVAL_RATES_BY_DAY: tuple[tuple[float, ...], ...] = (
 )
 
 EVENT_ARRIVAL = "抵達急診"
+EVENT_QUEUE_TRIAGE = "進入檢傷佇列"
+EVENT_START_TRIAGE = "開始檢傷"
+EVENT_END_TRIAGE = "結束檢傷"
 EVENT_QUEUE_INITIAL = "進入初診佇列"
 EVENT_START_INITIAL = "開始初診"
 EVENT_END_INITIAL = "結束初診"
@@ -262,8 +272,10 @@ DEFAULT_SCENARIOS = [
         "sample_result_slug": "weekly-baseline",
         "parameters": {
             "scheduling_strategy": DEFAULT_SCHEDULING_STRATEGY,
-            "num_doctors": DEFAULT_NUM_DOCTORS,
+            "num_general_doctors": DEFAULT_NUM_GENERAL_DOCTORS,
+            "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
             "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
+            "num_nurses": DEFAULT_NUM_NURSES,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
             "num_lab": DEFAULT_NUM_LAB,
@@ -281,8 +293,10 @@ DEFAULT_SCENARIOS = [
         "sample_result_slug": "baseline",
         "parameters": {
             "scheduling_strategy": DEFAULT_SCHEDULING_STRATEGY,
-            "num_doctors": DEFAULT_NUM_DOCTORS,
+            "num_general_doctors": DEFAULT_NUM_GENERAL_DOCTORS,
+            "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
             "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
+            "num_nurses": DEFAULT_NUM_NURSES,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
             "num_lab": DEFAULT_NUM_LAB,
@@ -300,8 +314,10 @@ DEFAULT_SCENARIOS = [
         "sample_result_slug": "surge",
         "parameters": {
             "scheduling_strategy": DEFAULT_SCHEDULING_STRATEGY,
-            "num_doctors": DEFAULT_NUM_DOCTORS,
+            "num_general_doctors": DEFAULT_NUM_GENERAL_DOCTORS,
+            "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
             "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
+            "num_nurses": DEFAULT_NUM_NURSES,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
             "num_lab": DEFAULT_NUM_LAB,
@@ -319,8 +335,10 @@ DEFAULT_SCENARIOS = [
         "sample_result_slug": "expanded-staffing",
         "parameters": {
             "scheduling_strategy": DEFAULT_SCHEDULING_STRATEGY,
-            "num_doctors": 6,
+            "num_general_doctors": 4,
+            "num_senior_doctors": 2,
             "num_doctors_night": 4,
+            "num_nurses": DEFAULT_NUM_NURSES,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
             "num_lab": DEFAULT_NUM_LAB,

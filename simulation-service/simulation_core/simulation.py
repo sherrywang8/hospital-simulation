@@ -15,14 +15,14 @@ from .defaults import (
     DEFAULT_FOLLOW_UP_CONSULT_MAX,
     DEFAULT_FOLLOW_UP_CONSULT_MEAN,
     DEFAULT_FOLLOW_UP_CONSULT_MIN,
-    DEFAULT_INITIAL_CONSULT_MAX,
-    DEFAULT_INITIAL_CONSULT_MEAN,
-    DEFAULT_INITIAL_CONSULT_MIN,
     DEFAULT_LAB_DURATION,
     DEFAULT_LAB_EXAM_PROBABILITY,
     DEFAULT_LAB_REPORT_DELAY,
     DEFAULT_LEVEL3_SHARE,
     DEFAULT_LEVEL4_SHARE,
+    DEFAULT_TRIAGE_MAX,
+    DEFAULT_TRIAGE_MIN,
+    DEFAULT_TRIAGE_MODE,
     DEFAULT_ULTRASOUND_DURATION,
     DEFAULT_ULTRASOUND_EXAM_PROBABILITY,
     DEFAULT_ULTRASOUND_REPORT_DELAY,
@@ -34,11 +34,13 @@ from .defaults import (
     EVENT_END_INITIAL,
     EVENT_END_LAB,
     EVENT_END_RETURN,
+    EVENT_END_TRIAGE,
     EVENT_END_ULTRASOUND,
     EVENT_END_XRAY,
     EVENT_QUEUE_EXAM,
     EVENT_QUEUE_INITIAL,
     EVENT_QUEUE_RETURN,
+    EVENT_QUEUE_TRIAGE,
     EVENT_REPORT_READY_CT,
     EVENT_REPORT_READY_LAB,
     EVENT_REPORT_READY_ULTRASOUND,
@@ -47,6 +49,7 @@ from .defaults import (
     EVENT_START_INITIAL,
     EVENT_START_LAB,
     EVENT_START_RETURN,
+    EVENT_START_TRIAGE,
     EVENT_START_ULTRASOUND,
     EVENT_START_XRAY,
     PAPER_ARRIVAL_RATES_BY_DAY,
@@ -194,7 +197,7 @@ def request_doctor_consultation(
     patient: PatientRecord,
     hospital: Hospital,
     stage: str,
-    duration: float,
+    duration: float | None,
 ) -> Any:
     queue_event = EVENT_QUEUE_INITIAL if stage == "initial" else EVENT_QUEUE_RETURN
     patient.record_event(env.now, queue_event)
@@ -207,6 +210,25 @@ def request_doctor_consultation(
     )
     hospital.enqueue_doctor_request(request)
     yield request.completion_event
+
+
+def perform_triage(
+    env: simpy.Environment,
+    patient: PatientRecord,
+    hospital: Hospital,
+    rng: random.Random,
+) -> Any:
+    if hospital.nurses is None:
+        return
+
+    patient.record_event(env.now, EVENT_QUEUE_TRIAGE)
+    with hospital.nurses.request() as req:
+        yield req
+        patient.record_event(env.now, EVENT_START_TRIAGE, "TriageNurse")
+        duration = rng.triangular(DEFAULT_TRIAGE_MIN, DEFAULT_TRIAGE_MAX, DEFAULT_TRIAGE_MODE)
+        yield env.timeout(duration)
+        hospital.record_busy_time("nurses", duration)
+        patient.record_event(env.now, EVENT_END_TRIAGE, "TriageNurse")
 
 
 def perform_exam(
@@ -235,8 +257,13 @@ def doctor_worker(
     doctor_index: int,
     hospital: Hospital,
     parameters: SimulationParameters,
+    rng: random.Random,
 ) -> Any:
-    doctor_name = f"Doctor_{doctor_index}"
+    # Kim (2024) Table 4: indices 1..num_general_doctors → General, rest → Senior
+    is_general = doctor_index <= parameters.num_general_doctors
+    doctor_type = "General" if is_general else "Senior"
+    type_index = doctor_index if is_general else doctor_index - parameters.num_general_doctors
+    doctor_name = f"{doctor_type}Doctor_{type_index}"
 
     while True:
         if not parameters.is_doctor_active(doctor_index, env.now):
@@ -255,11 +282,23 @@ def doctor_worker(
         if request.stage == "initial":
             start_event = EVENT_START_INITIAL
             end_event = EVENT_END_INITIAL
+            # Sample service duration based on doctor type and patient triage level
+            # Kim (2024) Table 4 — Triangular(min, max, mode)
+            triage = request.patient.initial_triage_level
+            if is_general:
+                duration = (
+                    rng.triangular(10, 35, 25) if triage == "Level III"
+                    else rng.triangular(20, 45, 35)
+                )
+            else:
+                duration = (
+                    rng.triangular(5, 30, 20) if triage == "Level III"
+                    else rng.triangular(15, 40, 30)
+                )
         else:
             start_event = EVENT_START_RETURN
             end_event = EVENT_END_RETURN
-
-        duration = request.duration
+            duration = request.duration  # type: ignore[assignment]
 
         request.patient.record_event(env.now, start_event, doctor_name)
         yield env.timeout(duration)
@@ -279,19 +318,9 @@ def patient_flow(
     completion_state: dict[str, Any],
 ) -> Any:
     try:
-        initial_duration = sample_truncated_exponential(
-            patient_rng,
-            mean=DEFAULT_INITIAL_CONSULT_MEAN,
-            minimum=DEFAULT_INITIAL_CONSULT_MIN,
-            maximum=DEFAULT_INITIAL_CONSULT_MAX,
-        )
-        yield from request_doctor_consultation(
-            env,
-            patient,
-            hospital,
-            "initial",
-            initial_duration,
-        )
+        yield from perform_triage(env, patient, hospital, patient_rng)
+        # Duration is sampled in doctor_worker based on doctor type + triage level (Kim 2024 Table 4)
+        yield from request_doctor_consultation(env, patient, hospital, "initial", None)
 
         exam_plan = select_exam_plan(parameters, patient_rng)
         if exam_plan:
@@ -390,6 +419,7 @@ def build_summary(
 
     utilization_capacity = {
         "doctors": parameters.doctor_capacity_minutes(completed_at),
+        "nurses": parameters.num_nurses * completed_at,
         "ct": parameters.num_ct * completed_at,
         "xray": parameters.num_xray * completed_at,
         "lab": parameters.num_lab * completed_at,
@@ -426,8 +456,9 @@ def run_simulation(parameters: SimulationParameters | None = None) -> Simulation
         "done_event": env.event(),
     }
 
+    doctor_rng = random.Random(params.random_seed + 42 if params.random_seed is not None else None)
     for doctor_index in range(1, params.max_doctors + 1):
-        env.process(doctor_worker(env, doctor_index, hospital, params))
+        env.process(doctor_worker(env, doctor_index, hospital, params, doctor_rng))
 
     env.process(patient_arrival(env, hospital, params, all_patients, arrival_rng, completion_state))
     env.run(until=completion_state["done_event"])

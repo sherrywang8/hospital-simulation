@@ -6,6 +6,7 @@
       "scheduling_strategy": "SBP",
       "num_doctors": 5,
       "num_doctors_night": 3,
+      "num_nurses": 3,
       "num_ct": 1,
       "num_xray": 1,
       "num_lab": 1,
@@ -30,6 +31,7 @@
       "average_service_time": 21.9,
       "resource_utilization": {
         "doctors": 0.9863,
+        "nurses": 0.4125,
         "ct": 0.3496,
         "xray": 0.2239,
         "lab": 0.2898,
