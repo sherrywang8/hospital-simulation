@@ -28,8 +28,10 @@ def parse_args() -> argparse.Namespace:
         help="Preset scenario to run.",
     )
     parser.add_argument("--scheduling-strategy", choices=list(VALID_SCHEDULING_STRATEGIES))
-    parser.add_argument("--num-doctors", type=int)
+    parser.add_argument("--num-general-doctors", type=int)
+    parser.add_argument("--num-senior-doctors", type=int)
     parser.add_argument("--num-doctors-night", type=int)
+    parser.add_argument("--num-senior-doctors-night", type=int)
     parser.add_argument("--num-nurses", type=int)
     parser.add_argument("--num-ct", type=int)
     parser.add_argument("--num-xray", type=int)
@@ -38,6 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--simulation-time", type=int)
     parser.add_argument("--exam-probability", type=float)
     parser.add_argument("--arrival-rate-multiplier", type=float)
+    parser.add_argument("--use-taiwan-ttas", action="store_true")
     parser.add_argument("--random-seed", type=int)
     return parser.parse_args()
 
@@ -48,8 +51,10 @@ def resolve_parameters(args: argparse.Namespace) -> SimulationParameters:
 
     overrides = {
         "scheduling_strategy": args.scheduling_strategy,
-        "num_doctors": args.num_doctors,
+        "num_general_doctors": args.num_general_doctors,
+        "num_senior_doctors": args.num_senior_doctors,
         "num_doctors_night": args.num_doctors_night,
+        "num_senior_doctors_night": args.num_senior_doctors_night,
         "num_nurses": args.num_nurses,
         "num_ct": args.num_ct,
         "num_xray": args.num_xray,
@@ -58,6 +63,7 @@ def resolve_parameters(args: argparse.Namespace) -> SimulationParameters:
         "simulation_time": args.simulation_time,
         "exam_probability": args.exam_probability,
         "arrival_rate_multiplier": args.arrival_rate_multiplier,
+        "use_taiwan_ttas": args.use_taiwan_ttas,
         "random_seed": args.random_seed,
     }
     for key, value in overrides.items():

@@ -25,8 +25,11 @@ class Hospital:
         self.lab = _build_optional_resource(env, parameters.num_lab)
         self.ultrasound = _build_optional_resource(env, parameters.num_ultrasound)
 
+        self.level1_initial_queue: deque[DoctorConsultationRequest] = deque()
+        self.level2_initial_queue: deque[DoctorConsultationRequest] = deque()
         self.level3_initial_queue: deque[DoctorConsultationRequest] = deque()
         self.level4_initial_queue: deque[DoctorConsultationRequest] = deque()
+        self.level5_initial_queue: deque[DoctorConsultationRequest] = deque()
         self.follow_up_queue: deque[DoctorConsultationRequest] = deque()
         self.last_doctor_group: str | None = None
         self.doctor_queue_event = env.event()
@@ -43,20 +46,35 @@ class Hospital:
     def enqueue_doctor_request(self, request: DoctorConsultationRequest) -> None:
         if request.stage == "follow_up":
             self.follow_up_queue.append(request)
+        elif request.patient.initial_triage_level == "Level I":
+            self.level1_initial_queue.append(request)
+        elif request.patient.initial_triage_level == "Level II":
+            self.level2_initial_queue.append(request)
         elif request.patient.initial_triage_level == "Level III":
             self.level3_initial_queue.append(request)
+        elif request.patient.initial_triage_level == "Level V":
+            self.level5_initial_queue.append(request)
         else:
             self.level4_initial_queue.append(request)
         self._notify_doctor_queue()
 
-    def pop_next_doctor_request(self, current_time: float) -> DoctorConsultationRequest | None:
+    def pop_next_doctor_request(
+        self,
+        current_time: float,
+        *,
+        doctor_is_senior: bool,
+    ) -> DoctorConsultationRequest | None:
         request, next_group = pop_next_request(
+            self.level1_initial_queue,
+            self.level2_initial_queue,
             self.level3_initial_queue,
             self.level4_initial_queue,
+            self.level5_initial_queue,
             self.follow_up_queue,
             current_time,
             self.parameters,
             self.last_doctor_group,
+            doctor_is_senior,
         )
         if next_group is not None:
             self.last_doctor_group = next_group

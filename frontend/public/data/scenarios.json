@@ -2,12 +2,14 @@
   {
     "slug": "weekly-baseline",
     "title": "Weekly Baseline",
-    "description": "論文基準設定的 7 天 NHPP 情境，使用 SBP 與 5/5/3 醫師班表。",
+    "description": "論文基準設定的 7 天 NHPP 情境，使用 SBP 與 5/5/3 醫師班表（不啟用 TTAS）。",
     "sample_result_slug": "weekly-baseline",
     "parameters": {
       "scheduling_strategy": "SBP",
-      "num_doctors": 5,
+      "num_general_doctors": 3,
+      "num_senior_doctors": 2,
       "num_doctors_night": 3,
+      "num_senior_doctors_night": 1,
       "num_nurses": 3,
       "num_ct": 1,
       "num_xray": 1,
@@ -16,67 +18,31 @@
       "simulation_time": 10080,
       "exam_probability": 0.6,
       "arrival_rate_multiplier": 1.0,
+      "use_taiwan_ttas": false,
       "random_seed": 7
     }
   },
   {
-    "slug": "baseline",
-    "title": "Baseline",
-    "description": "論文基準設定的 12 小時片段，適合快速檢查單日流程。",
-    "sample_result_slug": "baseline",
+    "slug": "taiwan-ttas",
+    "title": "Taiwan TTAS",
+    "description": "切換為台灣 TTAS 五級檢傷的大環境設定，其他參數沿用論文基準，可在右側微調。",
+    "sample_result_slug": "weekly-baseline",
     "parameters": {
       "scheduling_strategy": "SBP",
-      "num_doctors": 5,
+      "num_general_doctors": 3,
+      "num_senior_doctors": 2,
       "num_doctors_night": 3,
+      "num_senior_doctors_night": 1,
       "num_nurses": 3,
       "num_ct": 1,
       "num_xray": 1,
       "num_lab": 1,
       "num_ultrasound": 1,
-      "simulation_time": 720,
+      "simulation_time": 10080,
       "exam_probability": 0.6,
       "arrival_rate_multiplier": 1.0,
+      "use_taiwan_ttas": true,
       "random_seed": 7
-    }
-  },
-  {
-    "slug": "surge",
-    "title": "Surge Load",
-    "description": "把論文的 NHPP 到診率提高 15%，用來觀察高壓需求情境。",
-    "sample_result_slug": "surge",
-    "parameters": {
-      "scheduling_strategy": "SBP",
-      "num_doctors": 5,
-      "num_doctors_night": 3,
-      "num_nurses": 3,
-      "num_ct": 1,
-      "num_xray": 1,
-      "num_lab": 1,
-      "num_ultrasound": 1,
-      "simulation_time": 1440,
-      "exam_probability": 0.6,
-      "arrival_rate_multiplier": 1.15,
-      "random_seed": 11
-    }
-  },
-  {
-    "slug": "expanded-staffing",
-    "title": "Expanded Staffing",
-    "description": "在論文基準上增加醫師班表人力，觀察擴編後的等待改善。",
-    "sample_result_slug": "expanded-staffing",
-    "parameters": {
-      "scheduling_strategy": "SBP",
-      "num_doctors": 6,
-      "num_doctors_night": 4,
-      "num_nurses": 3,
-      "num_ct": 1,
-      "num_xray": 1,
-      "num_lab": 1,
-      "num_ultrasound": 1,
-      "simulation_time": 720,
-      "exam_probability": 0.6,
-      "arrival_rate_multiplier": 1.0,
-      "random_seed": 13
     }
   }
 ]

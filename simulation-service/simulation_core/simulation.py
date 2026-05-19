@@ -53,6 +53,11 @@ from .defaults import (
     EVENT_START_ULTRASOUND,
     EVENT_START_XRAY,
     PAPER_ARRIVAL_RATES_BY_DAY,
+    TW_SHARE_L1,
+    TW_SHARE_L2,
+    TW_SHARE_L3,
+    TW_SHARE_L4,
+    TW_SHARE_L5,
 )
 from .hospital_env import Hospital
 from .models import (
@@ -124,6 +129,9 @@ EXAM_SEQUENCE = (
     },
 )
 
+PAPER_TRIAGE_LEVELS = ("Level III", "Level IV")
+TTAS_TRIAGE_LEVELS = ("Level I", "Level II", "Level III", "Level IV", "Level V")
+
 
 def sample_truncated_exponential(
     rng: random.Random,
@@ -158,6 +166,50 @@ def get_arrival_rate(hour_start: float, parameters: SimulationParameters) -> flo
     day_index = int(hour_start // 1440) % 7
     hour_index = int((hour_start % 1440) // 60)
     return PAPER_ARRIVAL_RATES_BY_DAY[day_index][hour_index] * parameters.arrival_rate_multiplier
+
+
+def sample_initial_triage_level(
+    parameters: SimulationParameters,
+    rng: random.Random,
+) -> str:
+    if parameters.use_taiwan_ttas:
+        return rng.choices(
+            TTAS_TRIAGE_LEVELS,
+            weights=[TW_SHARE_L1, TW_SHARE_L2, TW_SHARE_L3, TW_SHARE_L4, TW_SHARE_L5],
+            k=1,
+        )[0]
+
+    return rng.choices(
+        PAPER_TRIAGE_LEVELS,
+        weights=[DEFAULT_LEVEL3_SHARE, DEFAULT_LEVEL4_SHARE],
+        k=1,
+    )[0]
+
+
+def sample_initial_consult_duration(
+    *,
+    triage_level: str,
+    is_general: bool,
+    rng: random.Random,
+) -> float:
+    # Kim (2024) Table 4 — KTAS 等級分組 (1,2) / (3) / (4,5)，單位：分鐘
+    # 參數順序：rng.triangular(low, high, mode)
+    if triage_level in ("Level I", "Level II"):
+        if is_general:
+            return rng.triangular(8, 30, 20)
+        return rng.triangular(5, 25, 15)
+
+    if triage_level == "Level III":
+        if is_general:
+            return rng.triangular(10, 35, 25)
+        return rng.triangular(5, 30, 20)
+
+    if triage_level in ("Level IV", "Level V"):
+        if is_general:
+            return rng.triangular(20, 45, 35)
+        return rng.triangular(15, 40, 30)
+
+    raise ValueError(f"Unsupported triage level: {triage_level}")
 
 
 def select_exam_plan(parameters: SimulationParameters, rng: random.Random) -> list[dict[str, Any]]:
@@ -270,7 +322,7 @@ def doctor_worker(
             yield env.timeout(parameters.minutes_until_doctor_status_change(doctor_index, env.now))
             continue
 
-        request = hospital.pop_next_doctor_request(env.now)
+        request = hospital.pop_next_doctor_request(env.now, doctor_is_senior=not is_general)
         if request is None:
             wait_for = parameters.minutes_until_doctor_status_change(doctor_index, env.now)
             yield simpy.AnyOf(
@@ -282,19 +334,11 @@ def doctor_worker(
         if request.stage == "initial":
             start_event = EVENT_START_INITIAL
             end_event = EVENT_END_INITIAL
-            # Sample service duration based on doctor type and patient triage level
-            # Kim (2024) Table 4 — Triangular(min, max, mode)
-            triage = request.patient.initial_triage_level
-            if is_general:
-                duration = (
-                    rng.triangular(10, 35, 25) if triage == "Level III"
-                    else rng.triangular(20, 45, 35)
-                )
-            else:
-                duration = (
-                    rng.triangular(5, 30, 20) if triage == "Level III"
-                    else rng.triangular(15, 40, 30)
-                )
+            duration = sample_initial_consult_duration(
+                triage_level=request.patient.initial_triage_level,
+                is_general=is_general,
+                rng=rng,
+            )
         else:
             start_event = EVENT_START_RETURN
             end_event = EVENT_END_RETURN
@@ -382,11 +426,7 @@ def patient_arrival(
             if arrival_time > env.now:
                 yield env.timeout(arrival_time - env.now)
 
-            triage_level = arrival_rng.choices(
-                ["Level III", "Level IV"],
-                weights=[DEFAULT_LEVEL3_SHARE, DEFAULT_LEVEL4_SHARE],
-                k=1,
-            )[0]
+            triage_level = sample_initial_triage_level(parameters, arrival_rng)
             patient = PatientRecord(
                 patient_id=f"P{patient_id:04d}",
                 triage_level=triage_level,

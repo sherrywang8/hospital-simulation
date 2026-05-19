@@ -4,6 +4,7 @@ from __future__ import annotations
 DEFAULT_NUM_GENERAL_DOCTORS = 3
 DEFAULT_NUM_SENIOR_DOCTORS = 2
 DEFAULT_NUM_DOCTORS_NIGHT = 3
+DEFAULT_NUM_SENIOR_DOCTORS_NIGHT = 1
 DEFAULT_NUM_NURSES = 3
 DEFAULT_NUM_CT = 1
 DEFAULT_NUM_XRAY = 1
@@ -23,9 +24,11 @@ DEFAULT_K_LEVEL4 = 2.1
 DEFAULT_LEVEL3_SHARE = 0.25
 DEFAULT_LEVEL4_SHARE = 0.75
 
-DEFAULT_INITIAL_CONSULT_MEAN = 9.0
-DEFAULT_INITIAL_CONSULT_MIN = 5.0
-DEFAULT_INITIAL_CONSULT_MAX = 15.0
+TW_SHARE_L1 = 0.0347
+TW_SHARE_L2 = 0.1740
+TW_SHARE_L3 = 0.6495
+TW_SHARE_L4 = 0.1294
+TW_SHARE_L5 = 0.0124
 
 DEFAULT_TRIAGE_MIN = 3.0
 DEFAULT_TRIAGE_MODE = 7.0
@@ -275,6 +278,7 @@ DEFAULT_SCENARIOS = [
             "num_general_doctors": DEFAULT_NUM_GENERAL_DOCTORS,
             "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
             "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
+            "num_senior_doctors_night": DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
             "num_nurses": DEFAULT_NUM_NURSES,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
@@ -283,70 +287,31 @@ DEFAULT_SCENARIOS = [
             "simulation_time": DEFAULT_SIMULATION_TIME,
             "exam_probability": DEFAULT_EXAM_PROBABILITY,
             "arrival_rate_multiplier": DEFAULT_ARRIVAL_RATE_MULTIPLIER,
+            "use_taiwan_ttas": False,
             "random_seed": DEFAULT_RANDOM_SEED,
         },
     },
     {
-        "slug": "baseline",
-        "title": "Baseline",
-        "description": "論文基準設定的 12 小時片段，適合快速檢查單日流程。",
-        "sample_result_slug": "baseline",
+        "slug": "taiwan-ttas",
+        "title": "Taiwan TTAS",
+        "description": "切換為台灣 TTAS 五級檢傷的大環境設定，其他參數沿用論文基準，可在右側微調。",
+        "sample_result_slug": "weekly-baseline",
         "parameters": {
             "scheduling_strategy": DEFAULT_SCHEDULING_STRATEGY,
             "num_general_doctors": DEFAULT_NUM_GENERAL_DOCTORS,
             "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
             "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
+            "num_senior_doctors_night": DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
             "num_nurses": DEFAULT_NUM_NURSES,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
             "num_lab": DEFAULT_NUM_LAB,
             "num_ultrasound": DEFAULT_NUM_ULTRASOUND,
-            "simulation_time": 60 * 12,
+            "simulation_time": DEFAULT_SIMULATION_TIME,
             "exam_probability": DEFAULT_EXAM_PROBABILITY,
             "arrival_rate_multiplier": DEFAULT_ARRIVAL_RATE_MULTIPLIER,
+            "use_taiwan_ttas": True,
             "random_seed": DEFAULT_RANDOM_SEED,
-        },
-    },
-    {
-        "slug": "surge",
-        "title": "Surge Load",
-        "description": "把論文的 NHPP 到診率提高 15%，用來觀察高壓需求情境。",
-        "sample_result_slug": "surge",
-        "parameters": {
-            "scheduling_strategy": DEFAULT_SCHEDULING_STRATEGY,
-            "num_general_doctors": DEFAULT_NUM_GENERAL_DOCTORS,
-            "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
-            "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
-            "num_nurses": DEFAULT_NUM_NURSES,
-            "num_ct": DEFAULT_NUM_CT,
-            "num_xray": DEFAULT_NUM_XRAY,
-            "num_lab": DEFAULT_NUM_LAB,
-            "num_ultrasound": DEFAULT_NUM_ULTRASOUND,
-            "simulation_time": 60 * 24,
-            "exam_probability": DEFAULT_EXAM_PROBABILITY,
-            "arrival_rate_multiplier": 1.15,
-            "random_seed": 11,
-        },
-    },
-    {
-        "slug": "expanded-staffing",
-        "title": "Expanded Staffing",
-        "description": "在論文基準上增加醫師班表人力，觀察擴編後的等待改善。",
-        "sample_result_slug": "expanded-staffing",
-        "parameters": {
-            "scheduling_strategy": DEFAULT_SCHEDULING_STRATEGY,
-            "num_general_doctors": 4,
-            "num_senior_doctors": 2,
-            "num_doctors_night": 4,
-            "num_nurses": DEFAULT_NUM_NURSES,
-            "num_ct": DEFAULT_NUM_CT,
-            "num_xray": DEFAULT_NUM_XRAY,
-            "num_lab": DEFAULT_NUM_LAB,
-            "num_ultrasound": DEFAULT_NUM_ULTRASOUND,
-            "simulation_time": 60 * 12,
-            "exam_probability": DEFAULT_EXAM_PROBABILITY,
-            "arrival_rate_multiplier": DEFAULT_ARRIVAL_RATE_MULTIPLIER,
-            "random_seed": 13,
         },
     },
 ]

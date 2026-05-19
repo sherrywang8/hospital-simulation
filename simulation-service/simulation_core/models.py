@@ -11,6 +11,7 @@ from .defaults import (
     DEFAULT_NUM_CT,
     DEFAULT_NUM_DOCTORS_NIGHT,
     DEFAULT_NUM_GENERAL_DOCTORS,
+    DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
     DEFAULT_NUM_LAB,
     DEFAULT_NUM_NURSES,
     DEFAULT_NUM_SENIOR_DOCTORS,
@@ -45,6 +46,7 @@ class SimulationParameters:
     num_general_doctors: int = DEFAULT_NUM_GENERAL_DOCTORS
     num_senior_doctors: int = DEFAULT_NUM_SENIOR_DOCTORS
     num_doctors_night: int = DEFAULT_NUM_DOCTORS_NIGHT
+    num_senior_doctors_night: int = DEFAULT_NUM_SENIOR_DOCTORS_NIGHT
     num_nurses: int = DEFAULT_NUM_NURSES
     num_ct: int = DEFAULT_NUM_CT
     num_xray: int = DEFAULT_NUM_XRAY
@@ -53,6 +55,7 @@ class SimulationParameters:
     simulation_time: int = DEFAULT_SIMULATION_TIME
     exam_probability: float = DEFAULT_EXAM_PROBABILITY
     arrival_rate_multiplier: float = DEFAULT_ARRIVAL_RATE_MULTIPLIER
+    use_taiwan_ttas: bool = False
     target_time_level3: float = DEFAULT_TARGET_TIME_LEVEL3
     target_time_level4: float = DEFAULT_TARGET_TIME_LEVEL4
     k_level3: float = DEFAULT_K_LEVEL3
@@ -70,14 +73,33 @@ class SimulationParameters:
     def max_doctors(self) -> int:
         return max(self.num_doctors, self.num_doctors_night)
 
-    def doctor_capacity_at(self, current_time: float) -> int:
+    @property
+    def num_general_doctors_night(self) -> int:
+        # 夜班一般醫師 = 夜班總人數 − 夜班資深醫師（下限為 0）
+        return max(self.num_doctors_night - self.num_senior_doctors_night, 0)
+
+    def _is_day_shift(self, current_time: float) -> bool:
         minute_of_day = int(current_time) % 1440
-        if 7 * 60 <= minute_of_day < 22 * 60:
+        return 7 * 60 <= minute_of_day < 22 * 60
+
+    def doctor_capacity_at(self, current_time: float) -> int:
+        if self._is_day_shift(current_time):
             return self.num_doctors
         return self.num_doctors_night
 
     def is_doctor_active(self, doctor_index: int, current_time: float) -> bool:
-        return doctor_index <= self.doctor_capacity_at(current_time)
+        is_general = doctor_index <= self.num_general_doctors
+        if is_general:
+            type_rank = doctor_index
+            day_capacity = self.num_general_doctors
+            night_capacity = self.num_general_doctors_night
+        else:
+            type_rank = doctor_index - self.num_general_doctors
+            day_capacity = self.num_senior_doctors
+            night_capacity = self.num_senior_doctors_night
+
+        active_capacity = day_capacity if self._is_day_shift(current_time) else night_capacity
+        return type_rank <= active_capacity
 
     def minutes_until_doctor_status_change(self, doctor_index: int, current_time: float) -> float:
         status_now = self.is_doctor_active(doctor_index, current_time)

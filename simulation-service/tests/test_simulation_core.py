@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections import deque
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +16,8 @@ from simulation_core.defaults import (
     EVENT_START_INITIAL,
     EVENT_START_TRIAGE,
 )
+from simulation_core.models import DoctorConsultationRequest, PatientRecord
+from simulation_core.scheduler import pop_next_request
 
 
 def test_run_simulation_returns_records():
@@ -66,6 +69,179 @@ def test_patient_cohort_stays_stable_across_strategies():
     ]
 
     assert sbp_cohort == alt_cohort
+
+
+def test_paper_mode_only_generates_level3_and_level4():
+    result = run_simulation(
+        SimulationParameters(
+            simulation_time=720,
+            random_seed=7,
+            scheduling_strategy="SBP",
+            use_taiwan_ttas=False,
+        )
+    )
+
+    triage_levels = {item["triage_level"] for item in result.patient_summary}
+
+    assert triage_levels <= {"Level III", "Level IV"}
+
+
+def test_ttas_mode_generates_all_five_levels_with_high_volume():
+    result = run_simulation(
+        SimulationParameters(
+            simulation_time=1440,
+            random_seed=7,
+            exam_probability=0.0,
+            arrival_rate_multiplier=3.0,
+            use_taiwan_ttas=True,
+        )
+    )
+
+    triage_levels = {item["triage_level"] for item in result.patient_summary}
+
+    assert triage_levels == {"Level I", "Level II", "Level III", "Level IV", "Level V"}
+
+
+def test_scheduler_blocks_general_doctor_when_only_level1_waits():
+    level1_queue = deque(
+        [
+            DoctorConsultationRequest(
+                patient=PatientRecord("P0001", "Level I", 0.0),
+                stage="initial",
+                queued_at=0.0,
+                duration=None,
+                completion_event=None,
+            )
+        ]
+    )
+
+    request, group = pop_next_request(
+        level1_queue,
+        deque(),
+        deque(),
+        deque(),
+        deque(),
+        deque(),
+        current_time=10.0,
+        parameters=SimulationParameters(use_taiwan_ttas=True),
+        last_group=None,
+        doctor_is_senior=False,
+    )
+
+    assert request is None
+    assert group is None
+
+
+def test_scheduler_prefers_level1_and_level2_before_algorithm_zone():
+    level1_queue = deque(
+        [
+            DoctorConsultationRequest(
+                patient=PatientRecord("P0001", "Level I", 0.0),
+                stage="initial",
+                queued_at=0.0,
+                duration=None,
+                completion_event=None,
+            )
+        ]
+    )
+    level2_queue = deque(
+        [
+            DoctorConsultationRequest(
+                patient=PatientRecord("P0002", "Level II", 1.0),
+                stage="initial",
+                queued_at=1.0,
+                duration=None,
+                completion_event=None,
+            )
+        ]
+    )
+    level3_queue = deque(
+        [
+            DoctorConsultationRequest(
+                patient=PatientRecord("P0003", "Level III", 2.0),
+                stage="initial",
+                queued_at=2.0,
+                duration=None,
+                completion_event=None,
+            )
+        ]
+    )
+
+    senior_request, senior_group = pop_next_request(
+        level1_queue,
+        level2_queue,
+        level3_queue,
+        deque(),
+        deque(),
+        deque(),
+        current_time=10.0,
+        parameters=SimulationParameters(use_taiwan_ttas=True),
+        last_group=None,
+        doctor_is_senior=True,
+    )
+    general_request, general_group = pop_next_request(
+        level1_queue,
+        level2_queue,
+        level3_queue,
+        deque(),
+        deque(),
+        deque(),
+        current_time=10.0,
+        parameters=SimulationParameters(use_taiwan_ttas=True),
+        last_group=None,
+        doctor_is_senior=False,
+    )
+
+    assert senior_request is not None
+    assert senior_request.patient.initial_triage_level == "Level I"
+    assert senior_group is None
+    assert general_request is not None
+    assert general_request.patient.initial_triage_level == "Level II"
+    assert general_group is None
+    assert level3_queue
+
+
+def test_scheduler_only_serves_level5_after_higher_queues_clear():
+    level5_queue = deque(
+        [
+            DoctorConsultationRequest(
+                patient=PatientRecord("P0005", "Level V", 0.0),
+                stage="initial",
+                queued_at=0.0,
+                duration=None,
+                completion_event=None,
+            )
+        ]
+    )
+    follow_up_queue = deque(
+        [
+            DoctorConsultationRequest(
+                patient=PatientRecord("P0006", "Level III", 0.0),
+                stage="follow_up",
+                queued_at=0.0,
+                duration=10.0,
+                completion_event=None,
+            )
+        ]
+    )
+
+    request, group = pop_next_request(
+        deque(),
+        deque(),
+        deque(),
+        deque(),
+        level5_queue,
+        follow_up_queue,
+        current_time=10.0,
+        parameters=SimulationParameters(use_taiwan_ttas=True, scheduling_strategy="SBP"),
+        last_group=None,
+        doctor_is_senior=True,
+    )
+
+    assert request is not None
+    assert request.stage == "follow_up"
+    assert group == "follow_up"
+    assert level5_queue
 
 
 def test_triage_events_happen_before_initial_consult():

@@ -22,22 +22,55 @@ def is_initial_request_urgent(
 
 
 def pop_next_request(
+    level1_queue: deque[DoctorConsultationRequest],
+    level2_queue: deque[DoctorConsultationRequest],
     level3_queue: deque[DoctorConsultationRequest],
     level4_queue: deque[DoctorConsultationRequest],
+    level5_queue: deque[DoctorConsultationRequest],
     follow_up_queue: deque[DoctorConsultationRequest],
     current_time: float,
     parameters: SimulationParameters,
     last_group: DoctorQueueGroup | None,
+    doctor_is_senior: bool,
 ) -> tuple[DoctorConsultationRequest | None, DoctorQueueGroup | None]:
+    urgent_request = _pop_absolute_priority(level1_queue, level2_queue, doctor_is_senior)
+    if urgent_request is not None:
+        return urgent_request, None
+
     strategy = parameters.scheduling_strategy.upper()
 
     if strategy == "IFP":
-        return _pop_initial_first(level3_queue, level4_queue, follow_up_queue)
+        request, group = _pop_initial_first(level3_queue, level4_queue, follow_up_queue)
+    elif strategy == "ALT":
+        request, group = _pop_alternating(level3_queue, level4_queue, follow_up_queue, last_group)
+    else:
+        request, group = _pop_slack_based(
+            level3_queue,
+            level4_queue,
+            follow_up_queue,
+            current_time,
+            parameters,
+        )
 
-    if strategy == "ALT":
-        return _pop_alternating(level3_queue, level4_queue, follow_up_queue, last_group)
+    if request is not None:
+        return request, group
 
-    return _pop_slack_based(level3_queue, level4_queue, follow_up_queue, current_time, parameters)
+    if level5_queue:
+        return level5_queue.popleft(), None
+
+    return None, None
+
+
+def _pop_absolute_priority(
+    level1_queue: deque[DoctorConsultationRequest],
+    level2_queue: deque[DoctorConsultationRequest],
+    doctor_is_senior: bool,
+) -> DoctorConsultationRequest | None:
+    if doctor_is_senior and level1_queue:
+        return level1_queue.popleft()
+    if level2_queue:
+        return level2_queue.popleft()
+    return None
 
 
 def _pop_initial_first(

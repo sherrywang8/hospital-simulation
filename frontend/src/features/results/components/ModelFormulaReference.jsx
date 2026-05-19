@@ -169,25 +169,35 @@ function ModelFormulaReference() {
           <p className="formula-tag">Doctor Experience Levels</p>
           <h3 className="formula-title">醫師職級差異看診時間</h3>
           <p className="formula-copy">
-            初診服務時間依醫師職級（一般 / 資深）與病患檢傷級別（Level III / Level IV）採三角分配抽樣，反映資深醫師效率較高的臨床現實。
+            初診服務時間依醫師職級（一般 / 資深）與病患 KTAS 檢傷級別採三角分配抽樣。論文將 KTAS 等級分組為 (1,2) / (3) / (4,5) 三段，本系統將 Level I/II 對應 KTAS 1,2、Level III 對應 KTAS 3、Level IV/V 對應 KTAS 4,5。
           </p>
 
-          <FormulaRow label="General — Level III">
+          <FormulaRow label="General — KTAS 1, 2 (Level I, II)">
+            <span className="equation-symbol">
+              S ~ Triangular(min = 8, mode = 20, max = 30)
+            </span>
+          </FormulaRow>
+          <FormulaRow label="Senior — KTAS 1, 2 (Level I, II)">
+            <span className="equation-symbol">
+              S ~ Triangular(min = 5, mode = 15, max = 25)
+            </span>
+          </FormulaRow>
+          <FormulaRow label="General — KTAS 3 (Level III)">
             <span className="equation-symbol">
               S ~ Triangular(min = 10, mode = 25, max = 35)
             </span>
           </FormulaRow>
-          <FormulaRow label="General — Level IV">
-            <span className="equation-symbol">
-              S ~ Triangular(min = 20, mode = 35, max = 45)
-            </span>
-          </FormulaRow>
-          <FormulaRow label="Senior — Level III">
+          <FormulaRow label="Senior — KTAS 3 (Level III)">
             <span className="equation-symbol">
               S ~ Triangular(min = 5, mode = 20, max = 30)
             </span>
           </FormulaRow>
-          <FormulaRow label="Senior — Level IV">
+          <FormulaRow label="General — KTAS 4, 5 (Level IV, V)">
+            <span className="equation-symbol">
+              S ~ Triangular(min = 20, mode = 35, max = 45)
+            </span>
+          </FormulaRow>
+          <FormulaRow label="Senior — KTAS 4, 5 (Level IV, V)">
             <span className="equation-symbol">
               S ~ Triangular(min = 15, mode = 30, max = 40)
             </span>

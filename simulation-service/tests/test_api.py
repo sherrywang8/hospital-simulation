@@ -49,7 +49,8 @@ def test_create_simulation_returns_result():
             "/api/v1/simulations",
             json={
                 "scheduling_strategy": "SBP",
-                "num_doctors": 5,
+                "num_general_doctors": 3,
+                "num_senior_doctors": 2,
                 "num_doctors_night": 3,
                 "num_nurses": 3,
                 "num_ct": 1,
@@ -59,6 +60,7 @@ def test_create_simulation_returns_result():
                 "simulation_time": 180,
                 "exam_probability": 0.6,
                 "arrival_rate_multiplier": 1.0,
+                "use_taiwan_ttas": True,
                 "random_seed": 7,
             },
         )
@@ -70,6 +72,7 @@ def test_create_simulation_returns_result():
         assert payload["summary"]["total_patients"] > 0
         assert payload["summary"]["resource_utilization"]["nurses"] >= 0
         assert payload["summary"]["resource_utilization"]["ultrasound"] >= 0
+        assert payload["parameters"]["use_taiwan_ttas"] is True
         assert payload["event_log"]
     finally:
         shutil.rmtree(artifact_root, ignore_errors=True)

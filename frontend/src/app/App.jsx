@@ -3,6 +3,7 @@ import './App.css';
 import MetricCard from '../components/MetricCard.jsx';
 import StatusBanner from '../components/StatusBanner.jsx';
 import ArrivalRateReferenceTable from '../features/results/components/ArrivalRateReferenceTable.jsx';
+import MedicalExamReference from '../features/results/components/MedicalExamReference.jsx';
 import ModelFormulaReference from '../features/results/components/ModelFormulaReference.jsx';
 import ResultSummary from '../features/results/components/ResultSummary.jsx';
 import EventLogTable from '../features/results/components/EventLogTable.jsx';
@@ -16,6 +17,7 @@ const EMPTY_FORM = {
   num_general_doctors: 3,
   num_senior_doctors: 2,
   num_doctors_night: 3,
+  num_senior_doctors_night: 1,
   num_nurses: 3,
   num_ct: 1,
   num_xray: 1,
@@ -24,6 +26,7 @@ const EMPTY_FORM = {
   simulation_time: 10080,
   exam_probability: 0.6,
   arrival_rate_multiplier: 1.0,
+  use_taiwan_ttas: false,
   random_seed: 7,
 };
 
@@ -244,6 +247,7 @@ function App() {
       ) : activeView === VIEW_PAPER_REFERENCE ? (
         <section className="reference-page">
           <ArrivalRateReferenceTable />
+          <MedicalExamReference />
         </section>
       ) : (
         <section className="reference-page">
