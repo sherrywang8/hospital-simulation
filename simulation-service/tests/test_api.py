@@ -74,6 +74,54 @@ def test_create_simulation_returns_result():
         assert payload["summary"]["resource_utilization"]["ultrasound"] >= 0
         assert payload["parameters"]["use_taiwan_ttas"] is True
         assert payload["event_log"]
+        assert "event_log.csv" in payload["artifacts"]
+        assert "patient_summary.csv" in payload["artifacts"]
+    finally:
+        shutil.rmtree(artifact_root, ignore_errors=True)
+
+
+def test_create_simulation_exports_json_and_csv_artifacts():
+    artifact_root = make_artifact_root()
+    try:
+        client = TestClient(create_app(artifact_root=artifact_root))
+
+        response = client.post(
+            "/api/v1/simulations",
+            json={
+                "scheduling_strategy": "SBP",
+                "num_general_doctors": 3,
+                "num_senior_doctors": 2,
+                "num_doctors_night": 3,
+                "num_nurses": 3,
+                "num_ct": 1,
+                "num_xray": 1,
+                "num_lab": 1,
+                "num_ultrasound": 1,
+                "simulation_time": 180,
+                "exam_probability": 0.6,
+                "arrival_rate_multiplier": 1.0,
+                "use_taiwan_ttas": True,
+                "random_seed": 7,
+            },
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        simulation_id = payload["simulation_id"]
+
+        json_response = client.get(f"/api/v1/simulations/{simulation_id}/artifacts/event_log.json")
+        csv_response = client.get(f"/api/v1/simulations/{simulation_id}/artifacts/event_log.csv")
+        summary_csv_response = client.get(
+            f"/api/v1/simulations/{simulation_id}/artifacts/patient_summary.csv"
+        )
+
+        assert json_response.status_code == 200
+        assert json_response.json()["event_log"]
+        assert csv_response.status_code == 200
+        assert csv_response.content.startswith(b"\xef\xbb\xbf")
+        assert "event_type" in csv_response.content.decode("utf-8-sig").splitlines()[0]
+        assert summary_csv_response.status_code == 200
+        assert "patient_id" in summary_csv_response.content.decode("utf-8-sig").splitlines()[0]
     finally:
         shutil.rmtree(artifact_root, ignore_errors=True)
 

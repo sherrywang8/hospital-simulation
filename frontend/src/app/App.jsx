@@ -3,6 +3,7 @@ import './App.css';
 import MetricCard from '../components/MetricCard.jsx';
 import StatusBanner from '../components/StatusBanner.jsx';
 import ArrivalRateReferenceTable from '../features/results/components/ArrivalRateReferenceTable.jsx';
+import ComparisonSummary from '../features/results/components/ComparisonSummary.jsx';
 import MedicalExamReference from '../features/results/components/MedicalExamReference.jsx';
 import ModelFormulaReference from '../features/results/components/ModelFormulaReference.jsx';
 import ResultSummary from '../features/results/components/ResultSummary.jsx';
@@ -14,10 +15,10 @@ import { formatInteger } from '../lib/formatters.js';
 
 const EMPTY_FORM = {
   scheduling_strategy: 'SBP',
-  num_general_doctors: 3,
-  num_senior_doctors: 2,
-  num_doctors_night: 3,
-  num_senior_doctors_night: 1,
+  num_general_doctors: 5,
+  num_senior_doctors: 3,
+  num_doctors_night: 5,
+  num_senior_doctors_night: 2,
   num_nurses: 3,
   num_ct: 1,
   num_xray: 1,
@@ -38,6 +39,8 @@ function App() {
   const [scenarios, setScenarios] = useState([]);
   const [selectedScenarioSlug, setSelectedScenarioSlug] = useState('');
   const [formValues, setFormValues] = useState(EMPTY_FORM);
+  const [baselineResult, setBaselineResult] = useState(null);
+  const [customBaseline, setCustomBaseline] = useState(null);
   const [result, setResult] = useState(null);
   const [activeView, setActiveView] = useState(VIEW_OVERVIEW);
   const [loading, setLoading] = useState(true);
@@ -53,6 +56,7 @@ function App() {
 
   const commitScenarioResult = (scenario, sampleResult) => {
     startTransition(() => {
+      setBaselineResult(sampleResult);
       setResult(sampleResult);
       setFormValues({ ...scenario.parameters });
       setDataSource('sample');
@@ -239,6 +243,61 @@ function App() {
 
             <div className="layout-column">
               {result ? <ResultSummary result={result} sourceLabel={dataSource === 'live' ? '即時 API' : '本地樣本'} /> : null}
+
+              {result ? (
+                <div className="baseline-actions">
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => {
+                      setCustomBaseline({
+                        result,
+                        parameters: { ...formValues },
+                        strategy: formValues.scheduling_strategy,
+                        source: dataSource,
+                        capturedAt: new Date().toISOString(),
+                      });
+                      setStatus({
+                        tone: 'success',
+                        message: `已將目前 ${formValues.scheduling_strategy} 策略結果鎖定為比較基準。`,
+                      });
+                    }}
+                    disabled={busy}
+                  >
+                    🔒 將目前結果設為比較基準
+                  </button>
+                  {customBaseline ? (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => {
+                        setCustomBaseline(null);
+                        setStatus({
+                          tone: 'info',
+                          message: '已清除自訂比較基準，將回到情境樣本作為 Baseline。',
+                        });
+                      }}
+                    >
+                      清除自訂基準
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {result && (customBaseline || (dataSource === 'live' && baselineResult)) ? (
+                <ComparisonSummary
+                  currentResult={result}
+                  currentParameters={formValues}
+                  baselineResult={customBaseline ? customBaseline.result : baselineResult}
+                  baselineParameters={customBaseline ? customBaseline.parameters : null}
+                  baselineLabel={
+                    customBaseline
+                      ? `自訂基準 (${customBaseline.strategy})`
+                      : selectedScenario?.title || '情境樣本'
+                  }
+                  isCustomBaseline={Boolean(customBaseline)}
+                />
+              ) : null}
             </div>
           </section>
 

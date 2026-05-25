@@ -1,0 +1,4 @@
+﻿排程策略 (Strategy),病人總數 (Total Patients),平均初診等待時間 (Avg Waiting Min),P95初診等待時間 (P95 Waiting Min),平均總在院時間 (Avg LoS Min),平均醫療服務時間 (Avg Service Min),醫師總利用率 (Doctor Utilization)
+SBP,2265,167.22,373.0,2595.03,2427.81,98.79%
+IFP,2265,76.67,228.24,2778.44,2701.77,98.79%
+ALT,2265,953.22,2073.33,1012.2,58.98,98.43%
