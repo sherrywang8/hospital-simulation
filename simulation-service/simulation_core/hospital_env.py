@@ -12,7 +12,7 @@ def _build_optional_resource(env: simpy.Environment, capacity: int) -> simpy.Res
     if capacity <= 0:
         return None
     return simpy.Resource(env, capacity=capacity)
-
+#測試
 
 class Hospital:
     def __init__(self, env: simpy.Environment, parameters: SimulationParameters):
