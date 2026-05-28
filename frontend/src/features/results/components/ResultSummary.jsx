@@ -8,7 +8,7 @@ import {
 
 const RESOURCE_LABELS = {
   doctors: '醫師',
-  nurses: '護理師',
+  nurses: '護理師', // 👈 新增這個，對應後端合併後的三班制護理師
   ct: 'CT',
   xray: 'Xray',
   lab: 'Lab',

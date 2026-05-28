@@ -13,7 +13,10 @@ from .defaults import (
     DEFAULT_NUM_GENERAL_DOCTORS,
     DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
     DEFAULT_NUM_LAB,
-    DEFAULT_NUM_NURSES,
+    DEFAULT_NUM_NURSES_DAY,       # 新增
+    DEFAULT_NUM_NURSES_EVENING,   # 新增
+    DEFAULT_NUM_NURSES_NIGHT,     # 新增
+    DEFAULT_MEDICATION_PROBABILITY,
     DEFAULT_NUM_SENIOR_DOCTORS,
     DEFAULT_NUM_ULTRASOUND,
     DEFAULT_NUM_XRAY,
@@ -47,7 +50,10 @@ class SimulationParameters:
     num_senior_doctors: int = DEFAULT_NUM_SENIOR_DOCTORS
     num_doctors_night: int = DEFAULT_NUM_DOCTORS_NIGHT
     num_senior_doctors_night: int = DEFAULT_NUM_SENIOR_DOCTORS_NIGHT
-    num_nurses: int = DEFAULT_NUM_NURSES
+    num_nurses_day: int = DEFAULT_NUM_NURSES_DAY
+    num_nurses_evening: int = DEFAULT_NUM_NURSES_EVENING
+    num_nurses_night: int = DEFAULT_NUM_NURSES_NIGHT
+    medication_probability: float = DEFAULT_MEDICATION_PROBABILITY
     num_ct: int = DEFAULT_NUM_CT
     num_xray: int = DEFAULT_NUM_XRAY
     num_lab: int = DEFAULT_NUM_LAB
@@ -121,6 +127,29 @@ class SimulationParameters:
         while current_time < horizon:
             next_boundary = min(_next_shift_boundary(current_time), horizon)
             total += self.doctor_capacity_at(current_time) * (next_boundary - current_time)
+            current_time = next_boundary
+        return round(total, 4)
+    
+# 新增：取得當下時間點的護理師編制人數
+    def get_nurse_capacity(self, current_time: float) -> int:
+        minute_of_day = int(current_time) % 1440
+        # 配合 _next_shift_boundary 的時間切分[cite: 3]
+        if 7 * 60 <= minute_of_day < 15 * 60:
+            return self.num_nurses_day
+        elif 15 * 60 <= minute_of_day < 22 * 60:
+            return self.num_nurses_evening
+        else:
+            return self.num_nurses_night
+
+    # 新增：計算模擬期間內護理師的總量能 (分鐘數)，用於計算稼動率
+    def nurse_capacity_minutes(self, horizon: float) -> float:
+        if horizon <= 0:
+            return 0.0
+        total = 0.0
+        current_time = 0.0
+        while current_time < horizon:
+            next_boundary = min(_next_shift_boundary(current_time), horizon)
+            total += self.get_nurse_capacity(current_time) * (next_boundary - current_time)
             current_time = next_boundary
         return round(total, 4)
 

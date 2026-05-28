@@ -12,7 +12,12 @@ from simulation_core.defaults import (
     DEFAULT_NUM_DOCTORS_NIGHT,
     DEFAULT_NUM_GENERAL_DOCTORS,
     DEFAULT_NUM_LAB,
-    DEFAULT_NUM_NURSES,
+    # === 更新這裡的 Import ===
+    DEFAULT_NUM_NURSES_DAY,
+    DEFAULT_NUM_NURSES_EVENING,
+    DEFAULT_NUM_NURSES_NIGHT,
+    DEFAULT_MEDICATION_PROBABILITY,
+    # =========================
     DEFAULT_NUM_SENIOR_DOCTORS,
     DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
     DEFAULT_NUM_ULTRASOUND,
@@ -29,7 +34,12 @@ class SimulationParamsRequest(BaseModel):
     num_senior_doctors: int = Field(default=DEFAULT_NUM_SENIOR_DOCTORS, ge=0, le=32)
     num_doctors_night: int = Field(default=DEFAULT_NUM_DOCTORS_NIGHT, ge=1, le=32)
     num_senior_doctors_night: int = Field(default=DEFAULT_NUM_SENIOR_DOCTORS_NIGHT, ge=0, le=32)
-    num_nurses: int = Field(default=DEFAULT_NUM_NURSES, ge=0, le=32)
+    
+    num_nurses_day: int = Field(default=DEFAULT_NUM_NURSES_DAY, ge=0, le=128)
+    num_nurses_evening: int = Field(default=DEFAULT_NUM_NURSES_EVENING, ge=0, le=128)
+    num_nurses_night: int = Field(default=DEFAULT_NUM_NURSES_NIGHT, ge=0, le=128)
+    medication_probability: float = Field(default=DEFAULT_MEDICATION_PROBABILITY, ge=0.0, le=1.0)
+
     num_ct: int = Field(default=DEFAULT_NUM_CT, ge=0, le=16)
     num_xray: int = Field(default=DEFAULT_NUM_XRAY, ge=0, le=16)
     num_lab: int = Field(default=DEFAULT_NUM_LAB, ge=0, le=32)

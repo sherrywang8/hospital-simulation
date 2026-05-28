@@ -20,6 +20,9 @@ from .defaults import (
     DEFAULT_LAB_REPORT_DELAY,
     DEFAULT_LEVEL3_SHARE,
     DEFAULT_LEVEL4_SHARE,
+    DEFAULT_MEDICATION_MIN,
+    DEFAULT_MEDICATION_MAX,
+    DEFAULT_MEDICATION_MODE,
     DEFAULT_TRIAGE_MAX,
     DEFAULT_TRIAGE_MIN,
     DEFAULT_TRIAGE_MODE,
@@ -192,8 +195,6 @@ def sample_initial_consult_duration(
     is_general: bool,
     rng: random.Random,
 ) -> float:
-    # Kim (2024) Table 4 — KTAS 等級分組 (1,2) / (3) / (4,5)，單位：分鐘
-    # 參數順序：rng.triangular(low, high, mode)
     if triage_level in ("Level I", "Level II"):
         if is_general:
             return rng.triangular(8, 30, 20)
@@ -270,18 +271,37 @@ def perform_triage(
     hospital: Hospital,
     rng: random.Random,
 ) -> Any:
+    # 變更：改用統一的 nurses
     if hospital.nurses is None:
         return
 
     patient.record_event(env.now, EVENT_QUEUE_TRIAGE)
     with hospital.nurses.request() as req:
         yield req
-        patient.record_event(env.now, EVENT_START_TRIAGE, "TriageNurse")
+        patient.record_event(env.now, EVENT_START_TRIAGE, "Nurse")
         duration = rng.triangular(DEFAULT_TRIAGE_MIN, DEFAULT_TRIAGE_MAX, DEFAULT_TRIAGE_MODE)
         yield env.timeout(duration)
-        hospital.record_busy_time("nurses", duration)
-        patient.record_event(env.now, EVENT_END_TRIAGE, "TriageNurse")
+        hospital.record_busy_time("nurses", duration) # 變更：紀錄到 nurses
+        patient.record_event(env.now, EVENT_END_TRIAGE, "Nurse")
 
+def perform_nursing_task(
+    env: simpy.Environment,
+    patient: PatientRecord,
+    hospital: Hospital,
+    task_name: str,
+    duration: float,
+) -> Any:
+    # 變更：改用統一的 nurses
+    if hospital.nurses is None:
+        return
+
+    patient.record_event(env.now, f"等待 ({task_name})")
+    with hospital.nurses.request() as req:
+        yield req
+        patient.record_event(env.now, f"開始 ({task_name})", "Nurse")
+        yield env.timeout(duration)
+        hospital.record_busy_time("nurses", duration) # 變更：紀錄到 nurses
+        patient.record_event(env.now, f"結束 ({task_name})", "Nurse")
 
 def perform_exam(
     env: simpy.Environment,
@@ -311,7 +331,6 @@ def doctor_worker(
     parameters: SimulationParameters,
     rng: random.Random,
 ) -> Any:
-    # Kim (2024) Table 4: indices 1..num_general_doctors → General, rest → Senior
     is_general = doctor_index <= parameters.num_general_doctors
     doctor_type = "General" if is_general else "Senior"
     type_index = doctor_index if is_general else doctor_index - parameters.num_general_doctors
@@ -363,9 +382,16 @@ def patient_flow(
 ) -> Any:
     try:
         yield from perform_triage(env, patient, hospital, patient_rng)
-        # Duration is sampled in doctor_worker based on doctor type + triage level (Kim 2024 Table 4)
         yield from request_doctor_consultation(env, patient, hospital, "initial", None)
 
+        if patient_rng.random() < parameters.medication_probability:
+            med_duration = patient_rng.triangular(
+                DEFAULT_MEDICATION_MIN, 
+                DEFAULT_MEDICATION_MAX, 
+                DEFAULT_MEDICATION_MODE
+            )
+            yield from perform_nursing_task(env, patient, hospital, "給藥/打針", med_duration)
+            
         exam_plan = select_exam_plan(parameters, patient_rng)
         if exam_plan:
             patient.record_event(env.now, EVENT_QUEUE_EXAM)
@@ -459,7 +485,8 @@ def build_summary(
 
     utilization_capacity = {
         "doctors": parameters.doctor_capacity_minutes(completed_at),
-        "nurses": parameters.num_nurses * completed_at,
+        # 變更：改用新的動態排班加總方法
+        "nurses": parameters.nurse_capacity_minutes(completed_at),
         "ct": parameters.num_ct * completed_at,
         "xray": parameters.num_xray * completed_at,
         "lab": parameters.num_lab * completed_at,

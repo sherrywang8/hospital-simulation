@@ -19,7 +19,10 @@ const EMPTY_FORM = {
   num_senior_doctors: 3,
   num_doctors_night: 5,
   num_senior_doctors_night: 2,
-  num_nurses: 3,
+  num_nurses_day: 16,
+  num_nurses_evening: 16,
+  num_nurses_night: 8,
+  medication_probability: 0.5, // 給藥機率
   num_ct: 1,
   num_xray: 1,
   num_lab: 1,

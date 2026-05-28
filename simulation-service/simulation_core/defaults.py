@@ -5,7 +5,9 @@ DEFAULT_NUM_GENERAL_DOCTORS = 5
 DEFAULT_NUM_SENIOR_DOCTORS = 3
 DEFAULT_NUM_DOCTORS_NIGHT = 5
 DEFAULT_NUM_SENIOR_DOCTORS_NIGHT = 2
-DEFAULT_NUM_NURSES = 3
+DEFAULT_NUM_NURSES_DAY = 16      # 白班 (07:00-15:00)
+DEFAULT_NUM_NURSES_EVENING = 16  # 小夜班 (15:00-22:00)
+DEFAULT_NUM_NURSES_NIGHT = 8     # 大夜班 (22:00-07:00)
 DEFAULT_NUM_CT = 1
 DEFAULT_NUM_XRAY = 1
 DEFAULT_NUM_LAB = 1
@@ -29,6 +31,11 @@ TW_SHARE_L2 = 0.1740
 TW_SHARE_L3 = 0.6495
 TW_SHARE_L4 = 0.1294
 TW_SHARE_L5 = 0.0124
+
+DEFAULT_MEDICATION_PROBABILITY = 0.50
+DEFAULT_MEDICATION_MIN = 2.0
+DEFAULT_MEDICATION_MODE = 5.0
+DEFAULT_MEDICATION_MAX = 8.0
 
 DEFAULT_TRIAGE_MIN = 3.0
 DEFAULT_TRIAGE_MODE = 7.0
@@ -279,7 +286,12 @@ DEFAULT_SCENARIOS = [
             "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
             "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
             "num_senior_doctors_night": DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
-            "num_nurses": DEFAULT_NUM_NURSES,
+            # === 改這裡：換成三班制 ===
+            "num_nurses_day": DEFAULT_NUM_NURSES_DAY,
+            "num_nurses_evening": DEFAULT_NUM_NURSES_EVENING,
+            "num_nurses_night": DEFAULT_NUM_NURSES_NIGHT,
+            # =========================
+            "medication_probability": DEFAULT_MEDICATION_PROBABILITY,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
             "num_lab": DEFAULT_NUM_LAB,
@@ -302,7 +314,12 @@ DEFAULT_SCENARIOS = [
             "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
             "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
             "num_senior_doctors_night": DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
-            "num_nurses": DEFAULT_NUM_NURSES,
+            # === 改這裡：換成三班制 ===
+            "num_nurses_day": DEFAULT_NUM_NURSES_DAY,
+            "num_nurses_evening": DEFAULT_NUM_NURSES_EVENING,
+            "num_nurses_night": DEFAULT_NUM_NURSES_NIGHT,
+            # =========================
+            "medication_probability": DEFAULT_MEDICATION_PROBABILITY,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
             "num_lab": DEFAULT_NUM_LAB,

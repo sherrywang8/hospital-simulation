@@ -9,7 +9,12 @@ const STOCHASTIC_DISTRIBUTIONS = [
   {
     label: '檢傷時間',
     expression: 'T_triage ~ Triangular(a = 3, m = 7, b = 10)',
-    note: 'Kim (2024) 建議的三角分配，對應目前檢傷護理師流程。',
+    note: 'Kim (2024) 建議的三角分配，現由「共用護理師池」接單執行檢傷流程。',
+  },
+  {
+    label: '給藥/打針處置時間',
+    expression: 'T_med ~ Triangular(a = 2.0, m = 5.0, b = 8.0)',
+    note: 'DES 醫療模擬常見之經驗法則 (Rule of Thumb) 估計值。現由「共用護理師池」執行看診後的給藥與輸液流程。',
   },
   {
     label: '初診服務時間',
@@ -47,7 +52,7 @@ function ModelFormulaReference() {
 
       <div className="reference-summary">
         <span className="reference-chip">固定容量函數</span>
-        <span className="reference-chip">分段醫師班表</span>
+        <span className="reference-chip">分段排班函數</span>
         <span className="reference-chip">NHPP 到診模型</span>
         <span className="reference-chip">檢傷與看診分布</span>
         <span className="reference-chip">醫師職級差異</span>
@@ -79,12 +84,12 @@ function ModelFormulaReference() {
 
         <article className="formula-card">
           <p className="formula-tag">Shift Function</p>
-          <h3 className="formula-title">醫師容量</h3>
+          <h3 className="formula-title">人力容量 (動態分段班表)</h3>
           <p className="formula-copy">
-            醫師白天與夜班採分段函數，會依模擬時間落點切換為白班或夜班容量。
+            醫師與護理師皆採分段函數，會依模擬時間落點自動切換為對應班別的編制人力。
           </p>
 
-          <FormulaRow label="醫師容量">
+          <FormulaRow label="醫師容量 (兩班制)">
             <div className="piecewise-block">
               <div className="piecewise-head">
                 D(t) =
@@ -92,14 +97,45 @@ function ModelFormulaReference() {
               <div className="piecewise-body">
                 <div className="piecewise-line">
                   <span>
-                    n<sub>d</sub>
+                    n<sub>doc</sub>
                     <sup>day</sup>
                   </span>
                   <span>if 07:00 &lt;= (t mod 1440) &lt; 22:00</span>
                 </div>
                 <div className="piecewise-line">
                   <span>
-                    n<sub>d</sub>
+                    n<sub>doc</sub>
+                    <sup>night</sup>
+                  </span>
+                  <span>otherwise</span>
+                </div>
+              </div>
+            </div>
+          </FormulaRow>
+
+          <FormulaRow label="護理師容量 (三班制)">
+            <div className="piecewise-block">
+              <div className="piecewise-head">
+                N(t) =
+              </div>
+              <div className="piecewise-body">
+                <div className="piecewise-line">
+                  <span>
+                    n<sub>nurse</sub>
+                    <sup>day</sup>
+                  </span>
+                  <span>if 07:00 &lt;= (t mod 1440) &lt; 15:00</span>
+                </div>
+                <div className="piecewise-line">
+                  <span>
+                    n<sub>nurse</sub>
+                    <sup>evening</sup>
+                  </span>
+                  <span>if 15:00 &lt;= (t mod 1440) &lt; 22:00</span>
+                </div>
+                <div className="piecewise-line">
+                  <span>
+                    n<sub>nurse</sub>
                     <sup>night</sup>
                   </span>
                   <span>otherwise</span>
@@ -109,7 +145,7 @@ function ModelFormulaReference() {
           </FormulaRow>
 
           <p className="formula-note">
-            目前系統預設為白班 <code>5</code> 位醫師、夜班 <code>3</code> 位醫師；你也可以在前端表單手動調整。
+            目前系統預設為醫師日/夜兩班 (5人/3人)，護理師採標準白班/小夜/大夜三班制 (16/16/8人)。
           </p>
         </article>
 
@@ -152,7 +188,7 @@ function ModelFormulaReference() {
           <p className="formula-tag">Distributions</p>
           <h3 className="formula-title">其他已實作的隨機分布</h3>
           <p className="formula-copy">
-            這些分布會直接影響病人的檢傷、初診與複診服務時間，也是目前模擬核心的重要隨機來源。
+            這些分布會直接影響病患的檢傷、初診與複診服務時間，也是目前模擬核心的重要隨機來源。
           </p>
 
           {STOCHASTIC_DISTRIBUTIONS.map((item) => (

@@ -13,7 +13,12 @@ const FIELD_CONFIG = [
   { key: 'num_senior_doctors', label: '日班資深醫師數 (Day · Senior)', min: 0, step: 1 },
   { key: 'num_doctors_night', label: '夜班醫師總數', min: 1, step: 1 },
   { key: 'num_senior_doctors_night', label: '夜班資深醫師數 (其餘為一般)', min: 0, step: 1 },
-  { key: 'num_nurses', label: '護理師數', min: 0, step: 1 },
+  // === 變更：改為三班制護理師設定 ===
+  { key: 'num_nurses_day', label: '護理師 白班 (Day)', min: 1, step: 1 },
+  { key: 'num_nurses_evening', label: '護理師 小夜班 (Evening)', min: 1, step: 1 },
+  { key: 'num_nurses_night', label: '護理師 大夜班 (Night)', min: 1, step: 1 },
+  // ==============================
+  { key: 'medication_probability', label: '給藥/打針機率', min: 0, max: 1, step: 0.05 },
   { key: 'num_ct', label: 'CT 資源數', min: 0, step: 1 },
   { key: 'num_xray', label: 'Xray 資源數', min: 0, step: 1 },
   { key: 'num_lab', label: 'Lab 資源數', min: 0, step: 1 },
@@ -40,6 +45,7 @@ function SimulationForm({
         </div>
         <p className="panel-copy">
           這組表單現在對齊論文模型：NHPP 到診、SBP/ALT/IFP 排程、日夜醫師班表與四種檢查資源。
+          並導入了真實醫院的「三班制 (白班/小夜/大夜)」動態護理師排班模擬。
         </p>
       </div>
 
@@ -70,7 +76,7 @@ function SimulationForm({
                 value={values[field.key]}
                 disabled={disabled}
                 onChange={(event) => {
-                  const nextValue = ['exam_probability', 'arrival_rate_multiplier'].includes(field.key)
+                  const nextValue = ['exam_probability', 'arrival_rate_multiplier', 'medication_probability'].includes(field.key)
                     ? Number(event.target.value)
                     : Number.parseInt(event.target.value || '0', 10);
                   onFieldChange(field.key, Number.isNaN(nextValue) ? field.min ?? 0 : nextValue);

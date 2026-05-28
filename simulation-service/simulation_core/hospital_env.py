@@ -4,7 +4,8 @@ from collections import deque
 
 import simpy
 
-from .models import DoctorConsultationRequest, SimulationParameters
+# 注意這裡多引入了 _next_shift_boundary，給動態排班計算時間用
+from .models import DoctorConsultationRequest, SimulationParameters, _next_shift_boundary
 from .scheduler import pop_next_request
 
 
@@ -19,7 +20,18 @@ class Hospital:
         self.env = env
         self.parameters = parameters
 
-        self.nurses = _build_optional_resource(env, parameters.num_nurses)
+        # 1. 找出三班制中的最大人數作為 Resource 的硬體容量上限
+        max_nurses = max(
+            parameters.num_nurses_day, 
+            parameters.num_nurses_evening, 
+            parameters.num_nurses_night
+        )
+        self.nurses = _build_optional_resource(env, max_nurses)
+        
+        # 2. 啟動護理師動態排班管理員
+        if self.nurses is not None:
+            self.env.process(self._manage_nurse_shifts(max_nurses))
+
         self.ct_scanner = _build_optional_resource(env, parameters.num_ct)
         self.xray = _build_optional_resource(env, parameters.num_xray)
         self.lab = _build_optional_resource(env, parameters.num_lab)
@@ -36,12 +48,39 @@ class Hospital:
 
         self.busy_time: dict[str, float] = {
             "doctors": 0.0,
-            "nurses": 0.0,
+            "nurses": 0.0,  # 3. 將原本兩個護理師統計合併為一個
             "ct": 0.0,
             "xray": 0.0,
             "lab": 0.0,
             "ultrasound": 0.0,
         }
+
+    def _manage_nurse_shifts(self, max_nurses: int):
+        """透過預佔名額(Dummy requests)來動態控制各班別的護理師人數"""
+        dummy_requests = []
+        
+        while True:
+            current_cap = self.parameters.get_nurse_capacity(self.env.now)
+            to_block = max_nurses - current_cap  # 計算這個班別需要「封鎖」幾個座位
+
+            # 釋放名額 (例如從大夜 8 人交班給白班 16 人)
+            while len(dummy_requests) > to_block:
+                req = dummy_requests.pop()
+                self.nurses.release(req)
+
+            # 封鎖名額 (例如從小夜 16 人交班給大夜 8 人)
+            while len(dummy_requests) < to_block:
+                req = self.nurses.request()
+                yield req  # 會等當下正在忙的護理師結束手邊工作才真正離線
+                dummy_requests.append(req)
+
+            # 睡覺等待直到下一次交接班的時間點
+            now = self.env.now
+            next_boundary = _next_shift_boundary(now)
+            if next_boundary > now:
+                yield self.env.timeout(next_boundary - now)
+            else:
+                yield self.env.timeout(0.01) # 防止卡死
 
     def enqueue_doctor_request(self, request: DoctorConsultationRequest) -> None:
         if request.stage == "follow_up":
