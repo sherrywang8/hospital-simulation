@@ -9,6 +9,8 @@ from typing import Any
 import simpy
 
 from .defaults import (
+    EVENT_ADMIT,
+    EVENT_BOARDING,
     DEFAULT_CT_DURATION,
     DEFAULT_CT_EXAM_PROBABILITY,
     DEFAULT_CT_REPORT_DELAY,
@@ -44,6 +46,7 @@ from .defaults import (
     EVENT_QUEUE_INITIAL,
     EVENT_QUEUE_RETURN,
     EVENT_QUEUE_TRIAGE,
+    EVENT_OBSERVATION,
     EVENT_REPORT_READY_CT,
     EVENT_REPORT_READY_LAB,
     EVENT_REPORT_READY_ULTRASOUND,
@@ -303,6 +306,72 @@ def perform_nursing_task(
         hospital.record_busy_time("nurses", duration) # 變更：紀錄到 nurses
         patient.record_event(env.now, f"結束 ({task_name})", "Nurse")
 
+
+def select_nursing_tasks(patient: PatientRecord, rng: random.Random) -> list[tuple[str, float]]:
+    light_pool = [
+        ("給藥/打針", 5.0),
+        ("傷口護理 (Wound Care)", 3.7),
+    ]
+    moderate_pool = [("管路放置 (Foley/NG)", 5.7)]
+    major_pool = [("協助侵入性處置 (CVC/LP)", 6.8)]
+
+    if patient.initial_triage_level in ("Level I", "Level II"):
+        treatment_pool = light_pool + moderate_pool + major_pool
+        task_count_weights = [35, 40, 25]
+    elif patient.initial_triage_level == "Level III":
+        treatment_pool = light_pool + moderate_pool
+        task_count_weights = [45, 35, 20]
+    else:
+        treatment_pool = light_pool
+        task_count_weights = [60, 30, 10]
+
+    num_tasks = rng.choices([1, 2, 3], weights=task_count_weights)[0]
+    return rng.sample(treatment_pool, k=min(num_tasks, len(treatment_pool)))
+
+
+def needs_final_reassessment(
+    *,
+    nursing_tasks: list[tuple[str, float]],
+    exam_plan: list[dict[str, Any]],
+) -> bool:
+    return bool(nursing_tasks or exam_plan)
+
+
+def perform_final_nursing_wrap_up(
+    env: simpy.Environment,
+    patient: PatientRecord,
+    hospital: Hospital,
+    disposition_event: str,
+    rng: random.Random,
+) -> Any:
+    if disposition_event == EVENT_ADMIT:
+        task_name = "護理紀錄與交班"
+        duration = rng.uniform(2.0, 4.0)
+    else:
+        task_name = "護理紀錄與衛教"
+        duration = rng.uniform(2.0, 4.0)
+
+    yield from perform_nursing_task(env, patient, hospital, task_name, duration)
+
+
+def determine_disposition(
+    patient: PatientRecord,
+    nursing_tasks: list[tuple[str, float]],
+    rng: random.Random,
+) -> tuple[str, float]:
+    task_names = {task_name for task_name, _duration in nursing_tasks}
+    has_major = "協助侵入性處置 (CVC/LP)" in task_names
+    has_moderate = "管路放置 (Foley/NG)" in task_names
+    has_medication = "給藥/打針" in task_names
+
+    if has_major:
+        return EVENT_ADMIT, rng.uniform(120.0, 480.0)
+    if has_moderate and patient.initial_triage_level in ("Level I", "Level II", "Level III"):
+        return EVENT_ADMIT, rng.uniform(60.0, 240.0)
+    if has_medication:
+        return EVENT_OBSERVATION, rng.uniform(30.0, 90.0)
+    return EVENT_DISCHARGE, rng.uniform(5.0, 15.0)
+
 def perform_exam(
     env: simpy.Environment,
     patient: PatientRecord,
@@ -384,14 +453,13 @@ def patient_flow(
         yield from perform_triage(env, patient, hospital, patient_rng)
         yield from request_doctor_consultation(env, patient, hospital, "initial", None)
 
+        nursing_tasks: list[tuple[str, float]] = []
         if patient_rng.random() < parameters.medication_probability:
-            med_duration = patient_rng.triangular(
-                DEFAULT_MEDICATION_MIN, 
-                DEFAULT_MEDICATION_MAX, 
-                DEFAULT_MEDICATION_MODE
-            )
-            yield from perform_nursing_task(env, patient, hospital, "給藥/打針", med_duration)
-            
+            nursing_tasks = select_nursing_tasks(patient, patient_rng)
+            for task_name, base_time in nursing_tasks:
+                task_duration = patient_rng.uniform(base_time * 0.5, base_time * 1.5)
+                yield from perform_nursing_task(env, patient, hospital, task_name, task_duration)
+
         exam_plan = select_exam_plan(parameters, patient_rng)
         if exam_plan:
             patient.record_event(env.now, EVENT_QUEUE_EXAM)
@@ -407,6 +475,7 @@ def patient_flow(
                     yield env.timeout(ready_at - env.now)
                 patient.record_event(env.now, report_event, resource_name)
 
+        if needs_final_reassessment(nursing_tasks=nursing_tasks, exam_plan=exam_plan):
             patient.triage_level = "複診"
             follow_up_duration = sample_truncated_exponential(
                 patient_rng,
@@ -422,11 +491,31 @@ def patient_flow(
                 follow_up_duration,
             )
 
-        patient.record_event(env.now, EVENT_DISCHARGE)
+        disposition_event, holding_time = determine_disposition(patient, nursing_tasks, patient_rng)
+        if disposition_event == EVENT_ADMIT:
+            patient.record_event(env.now, EVENT_BOARDING)
+            yield env.timeout(holding_time)
+            yield from perform_final_nursing_wrap_up(
+                env, patient, hospital, disposition_event, patient_rng
+            )
+            patient.record_event(env.now, EVENT_ADMIT)
+        elif disposition_event == EVENT_OBSERVATION:
+            patient.record_event(env.now, EVENT_OBSERVATION)
+            yield env.timeout(holding_time)
+            yield from perform_final_nursing_wrap_up(
+                env, patient, hospital, disposition_event, patient_rng
+            )
+            patient.record_event(env.now, EVENT_DISCHARGE)
+        else:
+            yield env.timeout(holding_time)
+            yield from perform_final_nursing_wrap_up(
+                env, patient, hospital, disposition_event, patient_rng
+            )
+            patient.record_event(env.now, EVENT_DISCHARGE)
+        
     finally:
         completion_state["active_patients"] -= 1
         maybe_finish_simulation(completion_state)
-
 
 def patient_arrival(
     env: simpy.Environment,
@@ -554,6 +643,56 @@ def _records_to_csv_bytes(records: list[dict[str, Any]]) -> bytes:
     return buffer.getvalue().encode("utf-8-sig")
 
 
+def build_strategy_comparison_rows(
+    parameters: SimulationParameters,
+    *,
+    cached_results: dict[str, SimulationResult] | None = None,
+) -> list[dict[str, Any]]:
+    comparison_rows: list[dict[str, Any]] = []
+    cached = cached_results or {}
+
+    for strategy in ("SBP", "IFP", "ALT"):
+        result = cached.get(strategy)
+        if result is None:
+            strategy_parameters = SimulationParameters(
+                **{
+                    **parameters.to_dict(),
+                    "scheduling_strategy": strategy,
+                }
+            )
+            result = run_simulation(strategy_parameters)
+
+        summary = result.summary
+        comparison_rows.append(
+            {
+                "排程策略 (Strategy)": strategy,
+                "病人總數 (Total Patients)": summary.total_patients,
+                "平均初診等待時間 (Avg Waiting Min)": round(summary.average_waiting_time, 2),
+                "P95初診等待時間 (P95 Waiting Min)": round(summary.p95_waiting_time, 2),
+                "平均總在院時間 (Avg LoS Min)": round(summary.average_time_in_system, 2),
+                "平均醫療服務時間 (Avg Service Min)": round(summary.average_service_time, 2),
+                "醫師總利用率 (Doctor Utilization)": (
+                    f"{round(summary.resource_utilization.get('doctors', 0) * 100, 2):.2f}%"
+                ),
+                "護理師總利用率 (Nurse Utilization)": (
+                    f"{round(summary.resource_utilization.get('nurses', 0) * 100, 2):.2f}%"
+                ),
+            }
+        )
+
+    return comparison_rows
+
+
+def export_strategy_comparison_csv(
+    parameters: SimulationParameters,
+    *,
+    cached_results: dict[str, SimulationResult] | None = None,
+) -> bytes:
+    return _records_to_csv_bytes(
+        build_strategy_comparison_rows(parameters, cached_results=cached_results)
+    )
+
+
 def export_result(result: SimulationResult, artifact_name: str) -> bytes | dict[str, Any]:
     if artifact_name == "result.json":
         return result.to_dict()
@@ -565,4 +704,10 @@ def export_result(result: SimulationResult, artifact_name: str) -> bytes | dict[
         return _records_to_csv_bytes(result.event_log)
     if artifact_name == "patient_summary.csv":
         return _records_to_csv_bytes(result.patient_summary)
+    if artifact_name == "strategy_comparison_report.csv":
+        return export_strategy_comparison_csv(
+            result.parameters,
+            cached_results={result.parameters.scheduling_strategy: result},
+        )
     raise ValueError(f"Unsupported artifact type: {artifact_name}")
+    EVENT_OBSERVATION,

@@ -32,7 +32,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-senior-doctors", type=int)
     parser.add_argument("--num-doctors-night", type=int)
     parser.add_argument("--num-senior-doctors-night", type=int)
-    parser.add_argument("--num-nurses", type=int)
+    parser.add_argument("--num-nurses-day", type=int)
+    parser.add_argument("--num-nurses-evening", type=int)
+    parser.add_argument("--num-nurses-night", type=int)
     parser.add_argument("--num-ct", type=int)
     parser.add_argument("--num-xray", type=int)
     parser.add_argument("--num-lab", type=int)
@@ -55,7 +57,9 @@ def resolve_parameters(args: argparse.Namespace) -> SimulationParameters:
         "num_senior_doctors": args.num_senior_doctors,
         "num_doctors_night": args.num_doctors_night,
         "num_senior_doctors_night": args.num_senior_doctors_night,
-        "num_nurses": args.num_nurses,
+        "num_nurses_day": args.num_nurses_day,
+        "num_nurses_evening": args.num_nurses_evening,
+        "num_nurses_night": args.num_nurses_night,
         "num_ct": args.num_ct,
         "num_xray": args.num_xray,
         "num_lab": args.num_lab,
@@ -99,6 +103,7 @@ def main() -> int:
         "patient_summary.json",
         "event_log.csv",
         "patient_summary.csv",
+        "strategy_comparison_report.csv",
     ]
     for artifact_name in artifacts:
         write_payload(scenario_dir / artifact_name, export_result(result, artifact_name))

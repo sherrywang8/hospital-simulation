@@ -55,6 +55,9 @@ def _artifact_urls(simulation_id: str) -> dict[str, str]:
         "patient_summary.json": f"/api/v1/simulations/{simulation_id}/artifacts/patient_summary.json",
         "event_log.csv": f"/api/v1/simulations/{simulation_id}/artifacts/event_log.csv",
         "patient_summary.csv": f"/api/v1/simulations/{simulation_id}/artifacts/patient_summary.csv",
+        "strategy_comparison_report.csv": (
+            f"/api/v1/simulations/{simulation_id}/artifacts/strategy_comparison_report.csv"
+        ),
     }
 
 

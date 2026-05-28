@@ -52,7 +52,9 @@ def test_create_simulation_returns_result():
                 "num_general_doctors": 3,
                 "num_senior_doctors": 2,
                 "num_doctors_night": 3,
-                "num_nurses": 3,
+                "num_nurses_day": 3,
+                "num_nurses_evening": 3,
+                "num_nurses_night": 3,
                 "num_ct": 1,
                 "num_xray": 1,
                 "num_lab": 1,
@@ -76,6 +78,7 @@ def test_create_simulation_returns_result():
         assert payload["event_log"]
         assert "event_log.csv" in payload["artifacts"]
         assert "patient_summary.csv" in payload["artifacts"]
+        assert "strategy_comparison_report.csv" in payload["artifacts"]
     finally:
         shutil.rmtree(artifact_root, ignore_errors=True)
 
@@ -92,7 +95,9 @@ def test_create_simulation_exports_json_and_csv_artifacts():
                 "num_general_doctors": 3,
                 "num_senior_doctors": 2,
                 "num_doctors_night": 3,
-                "num_nurses": 3,
+                "num_nurses_day": 3,
+                "num_nurses_evening": 3,
+                "num_nurses_night": 3,
                 "num_ct": 1,
                 "num_xray": 1,
                 "num_lab": 1,
@@ -114,6 +119,9 @@ def test_create_simulation_exports_json_and_csv_artifacts():
         summary_csv_response = client.get(
             f"/api/v1/simulations/{simulation_id}/artifacts/patient_summary.csv"
         )
+        comparison_csv_response = client.get(
+            f"/api/v1/simulations/{simulation_id}/artifacts/strategy_comparison_report.csv"
+        )
 
         assert json_response.status_code == 200
         assert json_response.json()["event_log"]
@@ -122,6 +130,11 @@ def test_create_simulation_exports_json_and_csv_artifacts():
         assert "event_type" in csv_response.content.decode("utf-8-sig").splitlines()[0]
         assert summary_csv_response.status_code == 200
         assert "patient_id" in summary_csv_response.content.decode("utf-8-sig").splitlines()[0]
+        assert comparison_csv_response.status_code == 200
+        comparison_lines = comparison_csv_response.content.decode("utf-8-sig").splitlines()
+        assert "排程策略 (Strategy)" in comparison_lines[0]
+        assert "護理師總利用率 (Nurse Utilization)" in comparison_lines[0]
+        assert len(comparison_lines) == 4
     finally:
         shutil.rmtree(artifact_root, ignore_errors=True)
 

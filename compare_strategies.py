@@ -10,41 +10,23 @@ if PARENT_DIR not in sys.path:
 
 # 🔥 改用核心資料夾作為 Package 起點匯入
 from simulation_core.models import SimulationParameters
-from simulation_core.simulation import run_simulation
+from simulation_core.simulation import build_strategy_comparison_rows
 
 
 def generate_comparison_csv(filename="strategy_comparison_report.csv"):
-    strategies = ["SBP", "IFP", "ALT"]
-    comparison_rows = []
-
     print("🚀 完美對齊套件結構！開始批次執行 8/8/5 醫師班表下的跨策略模擬...")
 
-    for strategy in strategies:
-        print(f"正在執行 {strategy} 策略模擬...")
-        
-        # 建立參數物件，確保醫師人數是修改後的 8/8/5
-        params = SimulationParameters(
-            scheduling_strategy=strategy,
-            num_general_doctors=5,
-            num_senior_doctors=3,
-            num_doctors_night=5,
-            num_senior_doctors_night=2
-        )
-        
-        # 執行該策略的模擬
-        result = run_simulation(params)
-        summary = result.summary
-        
-        # 擷取關鍵 KPI 指標
-        comparison_rows.append({
-            "排程策略 (Strategy)": strategy,
-            "病人總數 (Total Patients)": summary.total_patients,
-            "平均初診等待時間 (Avg Waiting Min)": round(summary.average_waiting_time, 2),
-            "P95初診等待時間 (P95 Waiting Min)": round(summary.p95_waiting_time, 2),
-            "平均總在院時間 (Avg LoS Min)": round(summary.average_time_in_system, 2),
-            "平均醫療服務時間 (Avg Service Min)": round(summary.average_service_time, 2),
-            "醫師總利用率 (Doctor Utilization)": f"{round(summary.resource_utilization.get('doctors', 0) * 100, 2)}%"
-        })
+    # 對齊目前三班制護理師 schema，使用現行預設值作為跨策略公平比較基準
+    params = SimulationParameters(
+        num_general_doctors=5,
+        num_senior_doctors=3,
+        num_doctors_night=5,
+        num_senior_doctors_night=2,
+        num_nurses_day=16,
+        num_nurses_evening=16,
+        num_nurses_night=8,
+    )
+    comparison_rows = build_strategy_comparison_rows(params)
 
     # 寫入 CSV (存放在專案大根目錄 C:\hospital-simulation 下)
     fieldnames = [
@@ -54,7 +36,8 @@ def generate_comparison_csv(filename="strategy_comparison_report.csv"):
         "P95初診等待時間 (P95 Waiting Min)", 
         "平均總在院時間 (Avg LoS Min)", 
         "平均醫療服務時間 (Avg Service Min)", 
-        "醫師總利用率 (Doctor Utilization)"
+        "醫師總利用率 (Doctor Utilization)",
+        "護理師總利用率 (Nurse Utilization)",
     ]
     
     output_path = os.path.join(r"C:\hospital-simulation", filename)

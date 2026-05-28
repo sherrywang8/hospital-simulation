@@ -11,10 +11,16 @@ const STOCHASTIC_DISTRIBUTIONS = [
     expression: 'T_triage ~ Triangular(a = 3, m = 7, b = 10)',
     note: 'Kim (2024) 建議的三角分配，現由「共用護理師池」接單執行檢傷流程。',
   },
+// === 更新這一段 ===
   {
-    label: '給藥/打針處置時間',
-    expression: 'T_med ~ Triangular(a = 2.0, m = 5.0, b = 8.0)',
-    note: 'DES 醫療模擬常見之經驗法則 (Rule of Thumb) 估計值。現由「共用護理師池」執行看診後的給藥與輸液流程。',
+    label: '隨機多重護理處置時間',
+    expression: 'T_treatment = Σ Uniform(0.5 × μ_i, 1.5 × μ_i)',
+    note: '病人可能在初診後至最終複診前觸發 1~3 項護理處置。各項基準時間為：給藥/打針 5.0 分、傷口護理 3.7 分、管路放置(Foley/NG) 5.7 分、協助侵入性處置(CVC/LP) 6.8 分；實際執行時間皆為該基準值的 0.5x ~ 1.5x 均勻分配，由共用護理師池執行。',
+  },
+  {
+    label: '護理收尾紀錄時間',
+    expression: 'T_wrapup ~ Uniform(2, 4)',
+    note: '每位病人在離開急診流程前都會有固定護理收尾。出院病人執行「護理紀錄與衛教」，住院/轉 ICU 病人執行「護理紀錄與交班」，兩者目前都採 2 ~ 4 分鐘均勻分配。',
   },
   {
     label: '初診服務時間',

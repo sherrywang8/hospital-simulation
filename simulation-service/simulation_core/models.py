@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
 from .defaults import (
+    EVENT_ADMIT,
     DEFAULT_ARRIVAL_RATE_MULTIPLIER,
     DEFAULT_EXAM_PROBABILITY,
     DEFAULT_K_LEVEL3,
@@ -243,7 +244,7 @@ class PatientRecord:
                 follow_up_queue_clock = event_time
             elif event_name == EVENT_START_RETURN and follow_up_start_clock is None:
                 follow_up_start_clock = event_time
-            elif event_name in {EVENT_END_RETURN, EVENT_DISCHARGE}:
+            elif event_name in {EVENT_DISCHARGE, EVENT_ADMIT}:
                 departure_clock = event_time
 
         if initial_start_clock is None:
