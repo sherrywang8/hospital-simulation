@@ -38,6 +38,12 @@ function getEventCategory(eventType = '') {
   return 'all';
 }
 
+function formatEventType(eventType = '') {
+  return eventType
+    .replace('護理紀錄與衛教', '護理紀錄')
+    .replace('護理紀錄與交班', '護理紀錄');
+}
+
 const PAGE_SIZE = 100;
 
 function EventLogTable({ logs }) {
@@ -49,7 +55,7 @@ function EventLogTable({ logs }) {
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
   const eventTypes = useMemo(
-    () => Array.from(new Set((logs || []).map((log) => log.event_type))).sort(),
+    () => Array.from(new Set((logs || []).map((log) => formatEventType(log.event_type)))).sort(),
     [logs]
   );
 
@@ -86,7 +92,7 @@ function EventLogTable({ logs }) {
         selectedWeekday === 'all' || getSimulationWeekdayIndex(log.timestamp) === Number(selectedWeekday);
 
       const matchesEventType =
-        activeEventType === 'all' || log.event_type === activeEventType;
+        activeEventType === 'all' || formatEventType(log.event_type) === activeEventType;
 
       return matchesSearch && matchesWeekday && matchesCategory && matchesEventType;
     });
@@ -210,7 +216,7 @@ function EventLogTable({ logs }) {
                 <td className="mono-cell time-cell">{formatSimulationClock(log.timestamp)}</td>
                 <td>
                   <span className={`event-badge ${getEventTone(log.event_type)}`}>
-                    {log.event_type}
+                    {formatEventType(log.event_type)}
                   </span>
                 </td>
                 <td className="mono-cell">{log.patient}</td>

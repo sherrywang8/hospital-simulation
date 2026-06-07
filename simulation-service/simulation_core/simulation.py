@@ -9,6 +9,10 @@ from typing import Any
 import simpy
 
 from .defaults import (
+    CRITICAL_ADMISSION_TASKS,
+    DEFAULT_ADMISSION_PROBS,
+    DEFAULT_CPR_NURSE_REQUIREMENT,
+    DEFAULT_INDIRECT_NURSING_MULTIPLIER,
     EVENT_ADMIT,
     EVENT_BOARDING,
     DEFAULT_CT_DURATION,
@@ -58,6 +62,8 @@ from .defaults import (
     EVENT_START_TRIAGE,
     EVENT_START_ULTRASOUND,
     EVENT_START_XRAY,
+    NURSING_TASKS,
+    TRIAGE_NURSING_PROFILES,
     PAPER_ARRIVAL_RATES_BY_DAY,
     TW_SHARE_L1,
     TW_SHARE_L2,
@@ -287,6 +293,9 @@ def perform_triage(
         hospital.record_busy_time("nurses", duration) # 變更：紀錄到 nurses
         patient.record_event(env.now, EVENT_END_TRIAGE, "Nurse")
 
+_CPR_TASK = "心肺復甦術 (CPR)"
+
+
 def perform_nursing_task(
     env: simpy.Environment,
     patient: PatientRecord,
@@ -294,39 +303,103 @@ def perform_nursing_task(
     task_name: str,
     duration: float,
 ) -> Any:
-    # 變更：改用統一的 nurses
     if hospital.nurses is None:
         return
 
+    nurse_count = DEFAULT_CPR_NURSE_REQUIREMENT if task_name == _CPR_TASK else 1
     patient.record_event(env.now, f"等待 ({task_name})")
-    with hospital.nurses.request() as req:
-        yield req
-        patient.record_event(env.now, f"開始 ({task_name})", "Nurse")
-        yield env.timeout(duration)
-        hospital.record_busy_time("nurses", duration) # 變更：紀錄到 nurses
-        patient.record_event(env.now, f"結束 ({task_name})", "Nurse")
+
+    if nurse_count == 1:
+        with hospital.nurses.request() as req:
+            yield req
+            patient.record_event(env.now, f"開始 ({task_name})", "Nurse")
+            yield env.timeout(duration)
+            hospital.record_busy_time("nurses", duration)
+            patient.record_event(env.now, f"結束 ({task_name})", "Nurse")
+    else:
+        requests = [hospital.nurses.request() for _ in range(nurse_count)]
+        yield simpy.AllOf(env, requests)
+        try:
+            patient.record_event(env.now, f"開始 ({task_name})", "Nurse")
+            yield env.timeout(duration)
+            hospital.record_busy_time("nurses", nurse_count * duration)
+            patient.record_event(env.now, f"結束 ({task_name})", "Nurse")
+        finally:
+            for req in requests:
+                hospital.nurses.release(req)
+
+
+_BLOOD_DRAW_TASK = "靜脈抽血 (Venous blood sample)"
+
+
+def _nursing_mean(task_name: str) -> float:
+    task = NURSING_TASKS[task_name]
+    mean: float = task["mean"]
+    if task.get("apply_indirect", False):
+        mean *= 1.0 + DEFAULT_INDIRECT_NURSING_MULTIPLIER
+    return mean
 
 
 def select_nursing_tasks(patient: PatientRecord, rng: random.Random) -> list[tuple[str, float]]:
-    light_pool = [
-        ("給藥/打針", 5.0),
-        ("傷口護理 (Wound Care)", 3.7),
-    ]
-    moderate_pool = [("管路放置 (Foley/NG)", 5.7)]
-    major_pool = [("協助侵入性處置 (CVC/LP)", 6.8)]
+    profile = TRIAGE_NURSING_PROFILES.get(patient.initial_triage_level, [])
+    tasks: list[tuple[str, float]] = []
+    selected_names: set[str] = set()
+    for task_name, probability in profile:
+        if task_name == _BLOOD_DRAW_TASK:
+            continue  # handled as Lab pre-requisite in patient_flow
+        if rng.random() < probability:
+            tasks.append((task_name, _nursing_mean(task_name)))
+            selected_names.add(task_name)
 
-    if patient.initial_triage_level in ("Level I", "Level II"):
-        treatment_pool = light_pool + moderate_pool + major_pool
-        task_count_weights = [35, 40, 25]
-    elif patient.initial_triage_level == "Level III":
-        treatment_pool = light_pool + moderate_pool
-        task_count_weights = [45, 35, 20]
-    else:
-        treatment_pool = light_pool
-        task_count_weights = [60, 30, 10]
+    _IV = "靜脈留置針置入 (IV insertion)"
+    _MED = "給藥/打針 (Medication/IM)"
+    _EDU = "衛生教育 (Health education)"
 
-    num_tasks = rng.choices([1, 2, 3], weights=task_count_weights)[0]
-    return rng.sample(treatment_pool, k=min(num_tasks, len(treatment_pool)))
+    if _IV in selected_names and _MED not in selected_names:
+        tasks.append((_MED, _nursing_mean(_MED)))
+        selected_names.add(_MED)
+
+    if not tasks:
+        tasks.append((_EDU, _nursing_mean(_EDU)))
+
+    return tasks
+
+
+def perform_nursing_care(
+    env: simpy.Environment,
+    patient: PatientRecord,
+    hospital: Hospital,
+    patient_rng: random.Random,
+    exam_plan: list[dict[str, Any]],
+) -> set[str]:
+    """執行初診後護理任務，並回傳本病人實際做過的護理任務名稱。
+
+    重點：
+    - 一般護理任務由 select_nursing_tasks() 依分診等級與機率產生。
+    - 靜脈抽血不再由一般護理任務隨機產生，而是只在 exam_plan 包含 Lab 時觸發。
+    - 若有 Lab，流程會先完成護理師抽血，再進入 Lab 檢驗流程。
+    """
+    nursing_tasks = select_nursing_tasks(patient, patient_rng)
+    performed_task_names: set[str] = set()
+
+    for task_name, base_time in nursing_tasks:
+        task_duration = patient_rng.uniform(base_time * 0.5, base_time * 1.5)
+        yield from perform_nursing_task(env, patient, hospital, task_name, task_duration)
+        performed_task_names.add(task_name)
+
+    # Lab 檢驗的前置護理動作：先由護理師抽血，再開始 Lab 檢驗。
+    if any(exam["key"] == "lab" for exam in exam_plan):
+        blood_draw_mean = _nursing_mean(_BLOOD_DRAW_TASK)
+        blood_draw_duration = patient_rng.uniform(
+            blood_draw_mean * 0.5,
+            blood_draw_mean * 1.5,
+        )
+        yield from perform_nursing_task(
+            env, patient, hospital, _BLOOD_DRAW_TASK, blood_draw_duration
+        )
+        performed_task_names.add(_BLOOD_DRAW_TASK)
+
+    return performed_task_names
 
 
 def needs_final_reassessment(
@@ -342,35 +415,12 @@ def perform_final_nursing_wrap_up(
     patient: PatientRecord,
     hospital: Hospital,
     disposition_event: str,
-    rng: random.Random,
+    _rng: random.Random,
 ) -> Any:
-    if disposition_event == EVENT_ADMIT:
-        task_name = "護理紀錄與交班"
-        duration = rng.uniform(2.0, 4.0)
-    else:
-        task_name = "護理紀錄與衛教"
-        duration = rng.uniform(2.0, 4.0)
-
+    task_name = "護理紀錄與交班" if disposition_event == EVENT_ADMIT else "護理紀錄與衛教"
+    duration = _nursing_mean("護理紀錄 (Documentation)")
     yield from perform_nursing_task(env, patient, hospital, task_name, duration)
 
-
-def determine_disposition(
-    patient: PatientRecord,
-    nursing_tasks: list[tuple[str, float]],
-    rng: random.Random,
-) -> tuple[str, float]:
-    task_names = {task_name for task_name, _duration in nursing_tasks}
-    has_major = "協助侵入性處置 (CVC/LP)" in task_names
-    has_moderate = "管路放置 (Foley/NG)" in task_names
-    has_medication = "給藥/打針" in task_names
-
-    if has_major:
-        return EVENT_ADMIT, rng.uniform(120.0, 480.0)
-    if has_moderate and patient.initial_triage_level in ("Level I", "Level II", "Level III"):
-        return EVENT_ADMIT, rng.uniform(60.0, 240.0)
-    if has_medication:
-        return EVENT_OBSERVATION, rng.uniform(30.0, 90.0)
-    return EVENT_DISCHARGE, rng.uniform(5.0, 15.0)
 
 def perform_exam(
     env: simpy.Environment,
@@ -453,14 +503,9 @@ def patient_flow(
         yield from perform_triage(env, patient, hospital, patient_rng)
         yield from request_doctor_consultation(env, patient, hospital, "initial", None)
 
-        nursing_tasks: list[tuple[str, float]] = []
-        if patient_rng.random() < parameters.medication_probability:
-            nursing_tasks = select_nursing_tasks(patient, patient_rng)
-            for task_name, base_time in nursing_tasks:
-                task_duration = patient_rng.uniform(base_time * 0.5, base_time * 1.5)
-                yield from perform_nursing_task(env, patient, hospital, task_name, task_duration)
-
         exam_plan = select_exam_plan(parameters, patient_rng)
+        performed_tasks = yield from perform_nursing_care(env, patient, hospital, patient_rng, exam_plan)
+
         if exam_plan:
             patient.record_event(env.now, EVENT_QUEUE_EXAM)
             report_readiness: list[tuple[float, str, str]] = []
@@ -475,7 +520,7 @@ def patient_flow(
                     yield env.timeout(ready_at - env.now)
                 patient.record_event(env.now, report_event, resource_name)
 
-        if needs_final_reassessment(nursing_tasks=nursing_tasks, exam_plan=exam_plan):
+        if performed_tasks or exam_plan:
             patient.triage_level = "複診"
             follow_up_duration = sample_truncated_exponential(
                 patient_rng,
@@ -491,26 +536,32 @@ def patient_flow(
                 follow_up_duration,
             )
 
-        disposition_event, holding_time = determine_disposition(patient, nursing_tasks, patient_rng)
-        if disposition_event == EVENT_ADMIT:
-            patient.record_event(env.now, EVENT_BOARDING)
-            yield env.timeout(holding_time)
-            yield from perform_final_nursing_wrap_up(
-                env, patient, hospital, disposition_event, patient_rng
-            )
-            patient.record_event(env.now, EVENT_ADMIT)
-        elif disposition_event == EVENT_OBSERVATION:
+        # 留觀期（有給藥者等待 30–90 分鐘，否則 5–15 分鐘）
+        if "給藥/打針 (Medication/IM)" in performed_tasks:
             patient.record_event(env.now, EVENT_OBSERVATION)
-            yield env.timeout(holding_time)
-            yield from perform_final_nursing_wrap_up(
-                env, patient, hospital, disposition_event, patient_rng
-            )
-            patient.record_event(env.now, EVENT_DISCHARGE)
+            yield env.timeout(patient_rng.uniform(30.0, 90.0))
         else:
-            yield env.timeout(holding_time)
-            yield from perform_final_nursing_wrap_up(
-                env, patient, hospital, disposition_event, patient_rng
-            )
+            yield env.timeout(patient_rng.uniform(5.0, 15.0))
+
+        # 基礎住院機率（依分診級別）
+        triage_lvl = patient.initial_triage_level
+        admit_prob = (
+            parameters.admission_probs.get(triage_lvl, 0.0)
+            if hasattr(parameters, "admission_probs")
+            else DEFAULT_ADMISSION_PROBS.get(triage_lvl, 0.0)
+        )
+
+        # 臨床強制：重症護理處置 → 100% 住院
+        if any(task in CRITICAL_ADMISSION_TASKS for task in performed_tasks):
+            admit_prob = 1.0
+
+        # 終點動向抽籤
+        if patient_rng.random() < admit_prob:
+            patient.record_event(env.now, EVENT_BOARDING)
+            yield from perform_final_nursing_wrap_up(env, patient, hospital, EVENT_ADMIT, patient_rng)
+            patient.record_event(env.now, EVENT_ADMIT)
+        else:
+            yield from perform_final_nursing_wrap_up(env, patient, hospital, EVENT_DISCHARGE, patient_rng)
             patient.record_event(env.now, EVENT_DISCHARGE)
         
     finally:
@@ -710,4 +761,3 @@ def export_result(result: SimulationResult, artifact_name: str) -> bytes | dict[
             cached_results={result.parameters.scheduling_strategy: result},
         )
     raise ValueError(f"Unsupported artifact type: {artifact_name}")
-    EVENT_OBSERVATION,

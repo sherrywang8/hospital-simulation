@@ -4,7 +4,6 @@ import MetricCard from '../components/MetricCard.jsx';
 import StatusBanner from '../components/StatusBanner.jsx';
 import ArrivalRateReferenceTable from '../features/results/components/ArrivalRateReferenceTable.jsx';
 import ComparisonSummary from '../features/results/components/ComparisonSummary.jsx';
-import MedicalExamReference from '../features/results/components/MedicalExamReference.jsx';
 import ModelFormulaReference from '../features/results/components/ModelFormulaReference.jsx';
 import ResultSummary from '../features/results/components/ResultSummary.jsx';
 import EventLogTable from '../features/results/components/EventLogTable.jsx';
@@ -19,9 +18,9 @@ const EMPTY_FORM = {
   num_senior_doctors: 3,
   num_doctors_night: 5,
   num_senior_doctors_night: 2,
-  num_nurses_day: 16,
-  num_nurses_evening: 16,
-  num_nurses_night: 8,
+  num_nurses_day: 13,
+  num_nurses_evening: 12,
+  num_nurses_night: 7,
   medication_probability: 0.5, // 給藥機率
   num_ct: 1,
   num_xray: 1,
@@ -309,7 +308,6 @@ function App() {
       ) : activeView === VIEW_PAPER_REFERENCE ? (
         <section className="reference-page">
           <ArrivalRateReferenceTable />
-          <MedicalExamReference />
         </section>
       ) : (
         <section className="reference-page">

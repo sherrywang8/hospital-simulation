@@ -5,14 +5,14 @@ DEFAULT_NUM_GENERAL_DOCTORS = 5
 DEFAULT_NUM_SENIOR_DOCTORS = 3
 DEFAULT_NUM_DOCTORS_NIGHT = 5
 DEFAULT_NUM_SENIOR_DOCTORS_NIGHT = 2
-DEFAULT_NUM_NURSES_DAY = 16      # 白班 (07:00-15:00)
-DEFAULT_NUM_NURSES_EVENING = 16  # 小夜班 (15:00-22:00)
-DEFAULT_NUM_NURSES_NIGHT = 8     # 大夜班 (22:00-07:00)
+DEFAULT_NUM_NURSES_DAY = 13      # 白班 (07:00-15:00)
+DEFAULT_NUM_NURSES_EVENING = 12  # 小夜班 (15:00-22:00)
+DEFAULT_NUM_NURSES_NIGHT = 7     # 大夜班 (22:00-07:00)
+DEFAULT_CPR_NURSE_REQUIREMENT = 3  # CPR 需同時占用護理師人數
 DEFAULT_NUM_CT = 1
 DEFAULT_NUM_XRAY = 1
 DEFAULT_NUM_LAB = 1
 DEFAULT_NUM_ULTRASOUND = 1
-
 DEFAULT_EXAM_PROBABILITY = 0.60
 DEFAULT_ARRIVAL_RATE_MULTIPLIER = 1.0
 DEFAULT_SCHEDULING_STRATEGY = "SBP"
@@ -62,6 +62,65 @@ DEFAULT_CT_REPORT_DELAY = 30.0
 
 DEFAULT_SIMULATION_TIME = 60 * 24 * 7
 DEFAULT_RANDOM_SEED = 7
+
+# Indirect nursing time multiplier.
+# apply_indirect=True tasks: effective mean = measured_mean × (1 + multiplier).
+# Set to 0.0 to disable correction; 1.0 doubles the measured time (100% indirect overhead).
+DEFAULT_INDIRECT_NURSING_MULTIPLIER = 1.0
+
+# Fann, W.-C. et al. (2019). Do Emergency Nurses Spend Enough Time on Nursing Activities?
+# apply_indirect=False: value is already expected/total time (CPR, Documentation).
+# apply_indirect=True:  value is measured bedside time; indirect care overhead is added at runtime.
+NURSING_TASKS: dict[str, dict] = {
+    "心肺復甦術 (CPR)":               {"mean": 40.1, "std": 14.3, "apply_indirect": False},
+    "呼吸道置入與固定 (Airway)":       {"mean":  6.7, "std":  5.0, "apply_indirect": True},
+    "靜脈留置針置入 (IV insertion)":   {"mean":  2.5, "std":  0.5, "apply_indirect": True},
+    "靜脈抽血 (Venous blood sample)": {"mean":  1.7, "std":  1.3, "apply_indirect": True},
+    "導尿管置入 (Foley insertion)":    {"mean":  5.7, "std":  4.9, "apply_indirect": True},
+    "傷口護理 (Wound care)":           {"mean":  3.7, "std":  3.1, "apply_indirect": True},
+    "給藥/打針 (Medication/IM)":        {"mean":  2.0, "std":  1.0, "apply_indirect": True},
+    "衛生教育 (Health education)":     {"mean":  1.0, "std":  0.5, "apply_indirect": True},
+    "協助侵入性處置 (CVC/LP)":          {"mean":  7.7, "std":  4.4, "apply_indirect": True},
+    "護理紀錄 (Documentation)":        {"mean": 16.0, "std": 15.3, "apply_indirect": False},
+}
+
+# Per-triage-level nursing task profiles.
+# Each entry is (task_name, independent_trigger_probability).
+# "靜脈抽血 (Venous blood sample)" is Lab-linked: used only when Lab is in the exam plan.
+TRIAGE_NURSING_PROFILES: dict[str, list[tuple[str, float]]] = {
+    "Level I": [
+        ("心肺復甦術 (CPR)",               0.15),
+        ("呼吸道置入與固定 (Airway)",       0.35),
+        ("協助侵入性處置 (CVC/LP)",         0.40),
+        ("靜脈留置針置入 (IV insertion)",   0.90),
+        ("靜脈抽血 (Venous blood sample)", 1.00),
+    ],
+    "Level II": [
+        ("呼吸道置入與固定 (Airway)",       0.05),
+        ("協助侵入性處置 (CVC/LP)",         0.10),
+        ("靜脈留置針置入 (IV insertion)",   0.85),
+        ("靜脈抽血 (Venous blood sample)", 0.90),
+        ("導尿管置入 (Foley insertion)",    0.10),
+        ("傷口護理 (Wound care)",           0.15),
+        ("給藥/打針 (Medication/IM)",       0.40),
+    ],
+    "Level III": [
+        ("靜脈留置針置入 (IV insertion)",   0.40),
+        ("靜脈抽血 (Venous blood sample)", 0.50),
+        ("導尿管置入 (Foley insertion)",    0.10),
+        ("傷口護理 (Wound care)",           0.20),
+        ("給藥/打針 (Medication/IM)",       0.60),
+    ],
+    "Level IV": [
+        ("給藥/打針 (Medication/IM)",       0.40),
+        ("傷口護理 (Wound care)",           0.30),
+        ("靜脈抽血 (Venous blood sample)", 0.05),
+        ("衛生教育 (Health education)",     0.80),
+    ],
+    "Level V": [
+        ("衛生教育 (Health education)",     1.00),
+    ],
+}
 
 # Table 2 from the paper, arranged as Monday-Sunday rows with 24 hourly rates.
 PAPER_ARRIVAL_RATES_BY_DAY: tuple[tuple[float, ...], ...] = (
@@ -276,6 +335,23 @@ EVENT_OBSERVATION = "進入留觀"
 EVENT_BOARDING = "等待病床"
 EVENT_DISCHARGE = "離院"
 EVENT_ADMIT = "轉入病房 / ICU"
+
+# Wuerz (2000) — observed admission rates by ESI triage level.
+DEFAULT_ADMISSION_PROBS: dict[str, float] = {
+    "Level I":   0.92,
+    "Level II":  0.61,
+    "Level III": 0.36,
+    "Level IV":  0.10,
+    "Level V":   0.00,
+}
+
+# Nursing procedures that indicate critical severity → force 100% admission.
+CRITICAL_ADMISSION_TASKS: frozenset[str] = frozenset({
+    "心肺復甦術 (CPR)",
+    "呼吸道置入與固定 (Airway)",
+    "導尿管置入 (Foley insertion)",
+    "協助侵入性處置 (CVC/LP)",
+})
 
 DEFAULT_SCENARIOS = [
     {
