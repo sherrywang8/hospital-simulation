@@ -8,16 +8,16 @@ from pydantic import BaseModel, Field, model_validator
 from simulation_core.defaults import (
     DEFAULT_ARRIVAL_RATE_MULTIPLIER,
     DEFAULT_EXAM_PROBABILITY,
+    DEFAULT_K_LEVEL3,
+    DEFAULT_K_LEVEL4,
     DEFAULT_NUM_CT,
     DEFAULT_NUM_DOCTORS_NIGHT,
     DEFAULT_NUM_GENERAL_DOCTORS,
     DEFAULT_NUM_LAB,
-    # === 更新這裡的 Import ===
     DEFAULT_NUM_NURSES_DAY,
     DEFAULT_NUM_NURSES_EVENING,
     DEFAULT_NUM_NURSES_NIGHT,
     DEFAULT_MEDICATION_PROBABILITY,
-    # =========================
     DEFAULT_NUM_SENIOR_DOCTORS,
     DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
     DEFAULT_NUM_ULTRASOUND,
@@ -25,28 +25,101 @@ from simulation_core.defaults import (
     DEFAULT_RANDOM_SEED,
     DEFAULT_SCHEDULING_STRATEGY,
     DEFAULT_SIMULATION_TIME,
+    DEFAULT_TARGET_TIME_LEVEL3,
+    DEFAULT_TARGET_TIME_LEVEL4,
 )
 
 
 class SimulationParamsRequest(BaseModel):
-    scheduling_strategy: Literal["IFP", "ALT", "SBP"] = Field(default=DEFAULT_SCHEDULING_STRATEGY)
-    num_general_doctors: int = Field(default=DEFAULT_NUM_GENERAL_DOCTORS, ge=1, le=32)
-    num_senior_doctors: int = Field(default=DEFAULT_NUM_SENIOR_DOCTORS, ge=0, le=32)
-    num_doctors_night: int = Field(default=DEFAULT_NUM_DOCTORS_NIGHT, ge=1, le=32)
-    num_senior_doctors_night: int = Field(default=DEFAULT_NUM_SENIOR_DOCTORS_NIGHT, ge=0, le=32)
-    
-    num_nurses_day: int = Field(default=DEFAULT_NUM_NURSES_DAY, ge=0, le=128)
-    num_nurses_evening: int = Field(default=DEFAULT_NUM_NURSES_EVENING, ge=0, le=128)
-    num_nurses_night: int = Field(default=DEFAULT_NUM_NURSES_NIGHT, ge=0, le=128)
-    medication_probability: float = Field(default=DEFAULT_MEDICATION_PROBABILITY, ge=0.0, le=1.0)
+    scheduling_strategy: Literal["IFP", "ALT", "SBP"] = Field(
+        default=DEFAULT_SCHEDULING_STRATEGY
+    )
+
+    # === SBP 排程最佳化參數 ===
+    target_time_level3: float = Field(
+        default=DEFAULT_TARGET_TIME_LEVEL3,
+        ge=0.0,
+        le=240.0,
+    )
+    target_time_level4: float = Field(
+        default=DEFAULT_TARGET_TIME_LEVEL4,
+        ge=0.0,
+        le=480.0,
+    )
+    k_level3: float = Field(
+        default=DEFAULT_K_LEVEL3,
+        ge=0.0,
+        le=120.0,
+    )
+    k_level4: float = Field(
+        default=DEFAULT_K_LEVEL4,
+        ge=0.0,
+        le=240.0,
+    )
+    # =========================
+
+    num_general_doctors: int = Field(
+        default=DEFAULT_NUM_GENERAL_DOCTORS,
+        ge=1,
+        le=32,
+    )
+    num_senior_doctors: int = Field(
+        default=DEFAULT_NUM_SENIOR_DOCTORS,
+        ge=0,
+        le=32,
+    )
+    num_doctors_night: int = Field(
+        default=DEFAULT_NUM_DOCTORS_NIGHT,
+        ge=1,
+        le=32,
+    )
+    num_senior_doctors_night: int = Field(
+        default=DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
+        ge=0,
+        le=32,
+    )
+
+    num_nurses_day: int = Field(
+        default=DEFAULT_NUM_NURSES_DAY,
+        ge=0,
+        le=128,
+    )
+    num_nurses_evening: int = Field(
+        default=DEFAULT_NUM_NURSES_EVENING,
+        ge=0,
+        le=128,
+    )
+    num_nurses_night: int = Field(
+        default=DEFAULT_NUM_NURSES_NIGHT,
+        ge=0,
+        le=128,
+    )
+    medication_probability: float = Field(
+        default=DEFAULT_MEDICATION_PROBABILITY,
+        ge=0.0,
+        le=1.0,
+    )
 
     num_ct: int = Field(default=DEFAULT_NUM_CT, ge=0, le=16)
     num_xray: int = Field(default=DEFAULT_NUM_XRAY, ge=0, le=16)
     num_lab: int = Field(default=DEFAULT_NUM_LAB, ge=0, le=32)
     num_ultrasound: int = Field(default=DEFAULT_NUM_ULTRASOUND, ge=0, le=16)
-    simulation_time: int = Field(default=DEFAULT_SIMULATION_TIME, ge=60, le=60 * 24 * 30)
-    exam_probability: float = Field(default=DEFAULT_EXAM_PROBABILITY, ge=0.0, le=1.0)
-    arrival_rate_multiplier: float = Field(default=DEFAULT_ARRIVAL_RATE_MULTIPLIER, ge=0.1, le=3.0)
+
+    simulation_time: int = Field(
+        default=DEFAULT_SIMULATION_TIME,
+        ge=60,
+        le=60 * 24 * 30,
+    )
+    exam_probability: float = Field(
+        default=DEFAULT_EXAM_PROBABILITY,
+        ge=0.0,
+        le=1.0,
+    )
+    arrival_rate_multiplier: float = Field(
+        default=DEFAULT_ARRIVAL_RATE_MULTIPLIER,
+        ge=0.1,
+        le=3.0,
+    )
     use_taiwan_ttas: bool = Field(default=False)
     random_seed: int | None = Field(default=DEFAULT_RANDOM_SEED)
 
@@ -54,8 +127,20 @@ class SimulationParamsRequest(BaseModel):
     def _validate_night_composition(self) -> "SimulationParamsRequest":
         if self.num_senior_doctors_night > self.num_doctors_night:
             raise ValueError("num_senior_doctors_night 不能超過 num_doctors_night")
+
         if self.num_senior_doctors_night > self.num_senior_doctors:
             raise ValueError("num_senior_doctors_night 不能超過總資深醫師人數 num_senior_doctors")
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_sbp_thresholds(self) -> "SimulationParamsRequest":
+        if self.k_level3 > self.target_time_level3:
+            raise ValueError("k_level3 不能超過 target_time_level3")
+
+        if self.k_level4 > self.target_time_level4:
+            raise ValueError("k_level4 不能超過 target_time_level4")
+
         return self
 
 

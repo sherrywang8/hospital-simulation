@@ -385,19 +385,19 @@ DEFAULT_SCENARIOS = [
     {
         "slug": "taiwan-ttas",
         "title": "Taiwan TTAS",
-        "description": "切換為台灣 TTAS 五級檢傷的大環境設定，其他參數沿用論文基準，可在右側微調。",
+        "description": "台灣 TTAS 五級檢傷情境，套用初步 SBP Grid Search 建議設定：日班一般醫師 +1,k_level3=28、k_level4=100。",
         "sample_result_slug": "weekly-baseline",
         "parameters": {
-            "scheduling_strategy": DEFAULT_SCHEDULING_STRATEGY,
-            "num_general_doctors": DEFAULT_NUM_GENERAL_DOCTORS,
+            "scheduling_strategy": "SBP",
+            "num_general_doctors": 6,
             "num_senior_doctors": DEFAULT_NUM_SENIOR_DOCTORS,
             "num_doctors_night": DEFAULT_NUM_DOCTORS_NIGHT,
             "num_senior_doctors_night": DEFAULT_NUM_SENIOR_DOCTORS_NIGHT,
-            # === 改這裡：換成三班制 ===
+
             "num_nurses_day": DEFAULT_NUM_NURSES_DAY,
             "num_nurses_evening": DEFAULT_NUM_NURSES_EVENING,
             "num_nurses_night": DEFAULT_NUM_NURSES_NIGHT,
-            # =========================
+
             "medication_probability": DEFAULT_MEDICATION_PROBABILITY,
             "num_ct": DEFAULT_NUM_CT,
             "num_xray": DEFAULT_NUM_XRAY,
@@ -406,7 +406,12 @@ DEFAULT_SCENARIOS = [
             "simulation_time": DEFAULT_SIMULATION_TIME,
             "exam_probability": DEFAULT_EXAM_PROBABILITY,
             "arrival_rate_multiplier": DEFAULT_ARRIVAL_RATE_MULTIPLIER,
+
             "use_taiwan_ttas": True,
+            "target_time_level3": DEFAULT_TARGET_TIME_LEVEL3,
+            "target_time_level4": DEFAULT_TARGET_TIME_LEVEL4,
+            "k_level3": 28.0,
+            "k_level4": 100.0,
             "random_seed": DEFAULT_RANDOM_SEED,
         },
     },

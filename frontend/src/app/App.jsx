@@ -14,14 +14,14 @@ import { formatInteger } from '../lib/formatters.js';
 
 const EMPTY_FORM = {
   scheduling_strategy: 'SBP',
-  num_general_doctors: 5,
+  num_general_doctors: 6,
   num_senior_doctors: 3,
   num_doctors_night: 5,
   num_senior_doctors_night: 2,
   num_nurses_day: 13,
   num_nurses_evening: 12,
   num_nurses_night: 7,
-  medication_probability: 0.5, // 給藥機率
+  medication_probability: 0.5,
   num_ct: 1,
   num_xray: 1,
   num_lab: 1,
@@ -29,7 +29,11 @@ const EMPTY_FORM = {
   simulation_time: 10080,
   exam_probability: 0.6,
   arrival_rate_multiplier: 1.0,
-  use_taiwan_ttas: false,
+  use_taiwan_ttas: true,
+  target_time_level3: 30,
+  target_time_level4: 120,
+  k_level3: 28,
+  k_level4: 100,
   random_seed: 7,
 };
 
@@ -174,7 +178,7 @@ function App() {
           <p className="eyebrow">React + SimPy + FastAPI</p>
           <h1 className="hero-title">急診模擬系統控制台</h1>
           <p className="hero-subtitle">
-            目前預設情境已對齊論文版本的 NHPP 到診、SBP 排程、5/5/3 醫師班表與四種檢查流程。
+            目前 Taiwan TTAS 情境已套用初步 SBP Grid Search 建議設定：日班一般醫師 +1、k3=28、k4=100，並保留 NHPP 到診、SBP 排程與四種檢查流程。
             當 API 尚未部署時，頁面會自動退回 `public/data` 內的樣本結果，方便先檢視整體行為。
           </p>
         </div>
