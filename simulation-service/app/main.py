@@ -26,6 +26,12 @@ def create_app(
         description="FastAPI service for the React + SimPy emergency department simulator.",
         version="0.1.0",
     )
+    @app.get("/")
+    def root():
+        return {
+            "status": "ok",
+            "message": "ED Simulation Service is running"
+        }
     app.add_middleware(
         CORSMiddleware,
         allow_origins=resolved_cors_origins,
